@@ -15,6 +15,7 @@ import java.util.*
 
 class HomeFragment : Fragment() {
 
+    //new
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var database: DatabaseReference
