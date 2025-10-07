@@ -14,4 +14,8 @@
     <string name="nama">Nama</string>
     <string name="pilih_tanggal">Pilih Tanggal</string>
     <string name="simpan">Simpan</string>
+
+    <!-- New strings -->
+    <string name="add_birthday">Tambah Ulang Tahun</string>
+    <string name="delete_birthday">Hapus Ulang Tahun</string>
 </resources>

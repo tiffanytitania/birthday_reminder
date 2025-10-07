@@ -57,4 +57,8 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx:20.3.1")
     implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
     implementation("com.prolificinteractive:material-calendarview:1.4.3")
+
+    // Tambahkan ini jika belum ada
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
 }
