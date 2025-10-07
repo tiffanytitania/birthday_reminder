@@ -23,6 +23,7 @@ class AddBirthdayFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var adapter: BirthdayAdapter
     private val birthdayList = mutableListOf<BirthdayItem>()
+    private var birthdayListener: ValueEventListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,15 +36,19 @@ class AddBirthdayFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        database = FirebaseDatabase.getInstance("https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/")
-            .reference
+        try {
+            database = FirebaseDatabase.getInstance("https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/")
+                .reference
 
-        setupRecyclerView()
-        loadBirthdays()
+            setupRecyclerView()
+            loadBirthdays()
 
-        // Tombol FAB untuk add birthday
-        binding.fabAdd.setOnClickListener {
-            showAddBirthdayDialog()
+            binding.fabAdd.setOnClickListener {
+                showAddBirthdayDialog()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -56,36 +61,46 @@ class AddBirthdayFragment : Fragment() {
     }
 
     private fun loadBirthdays() {
-        database.child("birthdays").addValueEventListener(object : ValueEventListener {
+        birthdayListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 birthdayList.clear()
                 for (data in snapshot.children) {
-                    val name = data.child("name").getValue(String::class.java) ?: ""
-                    val date = data.child("date").getValue(String::class.java) ?: ""
-                    val key = data.key ?: ""
-                    if (name.isNotEmpty() && date.isNotEmpty()) {
-                        birthdayList.add(BirthdayItem(key, name, date))
+                    try {
+                        val name = data.child("name").getValue(String::class.java) ?: ""
+                        val date = data.child("date").getValue(String::class.java) ?: ""
+                        val key = data.key ?: ""
+                        if (name.isNotEmpty() && date.isNotEmpty()) {
+                            birthdayList.add(BirthdayItem(key, name, date))
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
 
                 // Update adapter safely
-                if (::adapter.isInitialized) {
-                    adapter.notifyDataSetChanged()
+                activity?.runOnUiThread {
+                    if (isAdded && _binding != null) {
+                        adapter.notifyDataSetChanged()
+                        updateEmptyState()
+                    }
                 }
-
-                // Show/hide empty state
-                updateEmptyState()
             }
 
             override fun onCancelled(error: DatabaseError) {
-                if (isAdded && context != null) {
-                    Toast.makeText(requireContext(), "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                activity?.runOnUiThread {
+                    if (isAdded && context != null) {
+                        Toast.makeText(requireContext(), "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
-        })
+        }
+
+        database.child("birthdays").addValueEventListener(birthdayListener!!)
     }
 
     private fun updateEmptyState() {
+        if (_binding == null) return
+
         if (birthdayList.isEmpty()) {
             binding.emptyState.visibility = View.VISIBLE
             binding.recyclerView.visibility = View.GONE
@@ -98,96 +113,131 @@ class AddBirthdayFragment : Fragment() {
     private fun showAddBirthdayDialog() {
         if (!isAdded || context == null) return
 
-        val dialogView = layoutInflater.inflate(R.layout.dialog_add_birthday, null)
-        val etName = dialogView.findViewById<EditText>(R.id.etDialogName)
-        val etDate = dialogView.findViewById<EditText>(R.id.etDialogDate)
+        try {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_add_birthday, null)
+            val etName = dialogView.findViewById<EditText>(R.id.etDialogName)
+            val etDate = dialogView.findViewById<EditText>(R.id.etDialogDate)
 
-        // Date picker untuk field tanggal
-        etDate.setOnClickListener {
-            if (!isAdded || context == null) return@setOnClickListener
+            // Date picker untuk field tanggal
+            etDate.setOnClickListener {
+                if (!isAdded || context == null) return@setOnClickListener
 
-            val calendar = Calendar.getInstance()
-            val year = calendar.get(Calendar.YEAR)
-            val month = calendar.get(Calendar.MONTH)
-            val day = calendar.get(Calendar.DAY_OF_MONTH)
+                try {
+                    val calendar = Calendar.getInstance()
+                    val year = calendar.get(Calendar.YEAR)
+                    val month = calendar.get(Calendar.MONTH)
+                    val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-            val datePicker = DatePickerDialog(requireContext(),
-                { _, selectedYear, selectedMonth, selectedDay ->
-                    etDate.setText("$selectedDay/${selectedMonth + 1}/$selectedYear")
-                }, year, month, day)
+                    val datePicker = DatePickerDialog(requireContext(),
+                        { _, selectedYear, selectedMonth, selectedDay ->
+                            etDate.setText("$selectedDay/${selectedMonth + 1}/$selectedYear")
+                        }, year, month, day)
 
-            datePicker.show()
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Tambah Ulang Tahun")
-            .setView(dialogView)
-            .setPositiveButton("Simpan") { dialog, _ ->
-                val name = etName.text.toString().trim()
-                val date = etDate.text.toString().trim()
-
-                if (name.isEmpty() || date.isEmpty()) {
-                    if (isAdded && context != null) {
-                        Toast.makeText(requireContext(), "Harap isi semua field", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    saveBirthday(name, date)
-                    dialog.dismiss()
+                    datePicker.show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "Error membuka date picker", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Batal") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+
+            AlertDialog.Builder(requireContext())
+                .setTitle("Tambah Ulang Tahun")
+                .setView(dialogView)
+                .setPositiveButton("Simpan") { dialog, _ ->
+                    val name = etName.text.toString().trim()
+                    val date = etDate.text.toString().trim()
+
+                    if (name.isEmpty() || date.isEmpty()) {
+                        Toast.makeText(requireContext(), "Harap isi semua field", Toast.LENGTH_SHORT).show()
+                    } else {
+                        saveBirthday(name, date)
+                        dialog.dismiss()
+                    }
+                }
+                .setNegativeButton("Batal") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun saveBirthday(name: String, date: String) {
-        val birthday = Birthday(name, date)
-        database.child("birthdays").push().setValue(birthday)
-            .addOnSuccessListener {
-                if (isAdded && context != null) {
-                    Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+        try {
+            val birthday = Birthday(name, date)
+            database.child("birthdays").push().setValue(birthday)
+                .addOnSuccessListener {
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                if (isAdded && context != null) {
-                    Toast.makeText(requireContext(), "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+                .addOnFailureListener { e ->
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showDeleteConfirmation(birthdayItem: BirthdayItem) {
         if (!isAdded || context == null) return
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Hapus Ulang Tahun")
-            .setMessage("Yakin ingin menghapus ${birthdayItem.name}?")
-            .setPositiveButton("Hapus") { dialog, _ ->
-                deleteBirthday(birthdayItem.key)
-                dialog.dismiss()
-            }
-            .setNegativeButton("Batal") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+        try {
+            AlertDialog.Builder(requireContext())
+                .setTitle("Hapus Ulang Tahun")
+                .setMessage("Yakin ingin menghapus ${birthdayItem.name}?")
+                .setPositiveButton("Hapus") { dialog, _ ->
+                    deleteBirthday(birthdayItem.key)
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Batal") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun deleteBirthday(key: String) {
-        database.child("birthdays").child(key).removeValue()
-            .addOnSuccessListener {
-                if (isAdded && context != null) {
-                    Toast.makeText(requireContext(), "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+        try {
+            database.child("birthdays").child(key).removeValue()
+                .addOnSuccessListener {
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            }
-            .addOnFailureListener { e ->
-                if (isAdded && context != null) {
-                    Toast.makeText(requireContext(), "Gagal menghapus: ${e.message}", Toast.LENGTH_SHORT).show()
+                .addOnFailureListener { e ->
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Gagal menghapus: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
-            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Remove listener to prevent memory leak
+        birthdayListener?.let {
+            database.child("birthdays").removeEventListener(it)
+        }
         _binding = null
     }
 }

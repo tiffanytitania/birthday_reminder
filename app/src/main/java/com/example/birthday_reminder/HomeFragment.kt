@@ -2,9 +2,11 @@ package com.example.birthday_reminder
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.example.birthday_reminder.databinding.FragmentHomeBinding
@@ -15,113 +17,168 @@ import java.util.*
 
 class HomeFragment : Fragment() {
 
-    //new
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var database: DatabaseReference
-    private val birthdays = mutableListOf<Pair<String, String>>() // Pair(date, name)
+    private val birthdays = mutableListOf<Pair<String, String>>()
+    private var birthdayListener: ValueEventListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        database = FirebaseDatabase.getInstance("https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/")
-            .reference
 
-        fetchBirthdays()
+        try {
+            database = FirebaseDatabase.getInstance("https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/")
+                .reference
 
-        binding.calendarView.setOnDateChangedListener { _, date, _ ->
-            showBirthdayList(date)
+            fetchBirthdays()
+
+            binding.calendarView.setOnDateChangedListener { _, date, _ ->
+                showBirthdayList(date)
+            }
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error in onCreateView", e)
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
 
         return binding.root
     }
 
     private fun fetchBirthdays() {
-        database.child("birthdays").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                birthdays.clear()
-                for (data in snapshot.children) {
-                    val date = data.child("date").getValue(String::class.java)
-                    val name = data.child("name").getValue(String::class.java)
-                    if (date != null && name != null) {
-                        birthdays.add(Pair(date, name))
+        try {
+            birthdayListener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    birthdays.clear()
+                    for (data in snapshot.children) {
+                        try {
+                            val date = data.child("date").getValue(String::class.java)
+                            val name = data.child("name").getValue(String::class.java)
+                            if (date != null && name != null) {
+                                birthdays.add(Pair(date, name))
+                            }
+                        } catch (e: Exception) {
+                            Log.e("HomeFragment", "Error parsing birthday data", e)
+                        }
+                    }
+
+                    activity?.runOnUiThread {
+                        if (isAdded && _binding != null) {
+                            highlightBirthdays()
+                        }
                     }
                 }
-                highlightBirthdays()
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("HomeFragment", "Firebase error: ${error.message}")
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Error: ${error.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
 
-            override fun onCancelled(error: DatabaseError) {}
-        })
+            database.child("birthdays").addValueEventListener(birthdayListener!!)
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error fetching birthdays", e)
+        }
     }
 
     private fun highlightBirthdays() {
-        val decorator = object : DayViewDecorator {
-            override fun shouldDecorate(day: CalendarDay): Boolean {
-                val calendarDay = day.day
-                val calendarMonth = day.month + 1
-                return birthdays.any { dateMatches(it.first, calendarDay, calendarMonth) }
+        try {
+            val decorator = object : DayViewDecorator {
+                override fun shouldDecorate(day: CalendarDay): Boolean {
+                    val calendarDay = day.day
+                    val calendarMonth = day.month + 1
+                    return birthdays.any { dateMatches(it.first, calendarDay, calendarMonth) }
+                }
+
+                override fun decorate(view: DayViewFacade) {
+                    view.addSpan(DotSpan(8f, Color.RED))
+                }
             }
 
-            override fun decorate(view: DayViewFacade) {
-                view.addSpan(DotSpan(8f, Color.RED))
+            if (_binding != null) {
+                binding.calendarView.removeDecorators()
+                binding.calendarView.addDecorator(decorator)
             }
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error highlighting birthdays", e)
         }
-
-        binding.calendarView.removeDecorators()
-        binding.calendarView.addDecorator(decorator)
     }
 
     private fun showBirthdayList(date: CalendarDay) {
-        val day = date.day
-        val month = date.month + 1
-        val yearNow = Calendar.getInstance().get(Calendar.YEAR)
+        if (!isAdded || context == null) return
 
-        val people = birthdays.filter { dateMatches(it.first, day, month) }
+        try {
+            val day = date.day
+            val month = date.month + 1
+            val yearNow = Calendar.getInstance().get(Calendar.YEAR)
 
-        if (people.isEmpty()) return
+            val people = birthdays.filter { dateMatches(it.first, day, month) }
 
-        val names = people.map { it.second }.toTypedArray()
+            if (people.isEmpty()) return
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Ulang Tahun 🎉 (${day}/${month})")
-            .setItems(names) { _, which ->
-                val selected = people[which]
-                val birthDate = selected.first
-                val name = selected.second
+            val names = people.map { it.second }.toTypedArray()
 
-                val age = calculateAge(birthDate, yearNow)
+            AlertDialog.Builder(requireContext())
+                .setTitle("Ulang Tahun 🎉 (${day}/${month})")
+                .setItems(names) { _, which ->
+                    val selected = people[which]
+                    val birthDate = selected.first
+                    val name = selected.second
 
-                AlertDialog.Builder(requireContext())
-                    .setTitle(name)
-                    .setMessage("Tanggal Lahir: $birthDate\nUsia saat ini: $age tahun")
-                    .setPositiveButton("OK", null)
-                    .show()
-            }
-            .setNegativeButton("Tutup", null)
-            .show()
+                    val age = calculateAge(birthDate, yearNow)
+
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(name)
+                        .setMessage("Tanggal Lahir: $birthDate\nUsia saat ini: $age tahun")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+                .setNegativeButton("Tutup", null)
+                .show()
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error showing birthday list", e)
+            Toast.makeText(context, "Error menampilkan data", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun calculateAge(dateString: String, currentYear: Int): Int {
-        val parts = dateString.split("/")
-        if (parts.size != 3) return 0
-        val birthYear = parts[2].toIntOrNull() ?: return 0
-        return currentYear - birthYear
+        return try {
+            val parts = dateString.split("/")
+            if (parts.size != 3) return 0
+            val birthYear = parts[2].toIntOrNull() ?: return 0
+            currentYear - birthYear
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error calculating age", e)
+            0
+        }
     }
 
     private fun dateMatches(dateString: String, day: Int, month: Int): Boolean {
-        val parts = dateString.split("/")
-        if (parts.size < 2) return false
+        return try {
+            val parts = dateString.split("/")
+            if (parts.size < 2) return false
 
-        val dayPart = parts[0].toIntOrNull() ?: return false
-        val monthPart = parts[1].toIntOrNull() ?: return false
+            val dayPart = parts[0].toIntOrNull() ?: return false
+            val monthPart = parts[1].toIntOrNull() ?: return false
 
-        return (dayPart == day && monthPart == month)
+            (dayPart == day && monthPart == month)
+        } catch (e: Exception) {
+            Log.e("HomeFragment", "Error matching date", e)
+            false
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Remove listener to prevent memory leak
+        birthdayListener?.let {
+            database.child("birthdays").removeEventListener(it)
+        }
         _binding = null
     }
 }
