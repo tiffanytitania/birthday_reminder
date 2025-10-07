@@ -3,25 +3,49 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp"
+    android:background="@drawable/dialog_background">
 
-    <EditText
-        android:id="@+id/etDialogName"
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🎉 Tambah Ulang Tahun Baru"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:fontFamily="@font/comic_sans"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/nama"
-        android:inputType="textPersonName"
-        android:autofillHints="" />
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_marginBottom="16dp">
 
-    <EditText
-        android:id="@+id/etDialogDate"
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDialogName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName"
+            android:fontFamily="@font/comic_sans"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/pilih_tanggal"
-        android:layout_marginTop="16dp"
-        android:focusable="false"
-        android:clickable="true"
-        android:inputType="none"
-        android:autofillHints="" />
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDialogDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:clickable="true"
+            android:inputType="none"
+            android:drawableEnd="@android:drawable/ic_menu_my_calendar"
+            android:fontFamily="@font/comic_sans"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
 </LinearLayout>

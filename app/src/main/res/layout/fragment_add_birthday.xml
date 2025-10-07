@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background"
     tools:context=".AddBirthdayFragment">
 
     <!-- RecyclerView untuk list -->
@@ -13,7 +15,7 @@
         android:padding="8dp"
         android:clipToPadding="false" />
 
-    <!-- Empty state -->
+    <!-- Empty state dengan style baru -->
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="wrap_content"
@@ -26,27 +28,41 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="🎈"
+            android:textSize="64sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Belum ada ulang tahun"
-            android:textSize="16sp"
-            android:textColor="@android:color/darker_gray" />
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:fontFamily="@font/comic_sans"
+            android:layout_marginTop="16dp"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Tekan tombol + untuk menambah"
             android:textSize="14sp"
-            android:textColor="@android:color/darker_gray"
-            android:layout_marginTop="4dp" />
+            android:textColor="@color/text_secondary"
+            android:fontFamily="@font/comic_sans"
+            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
-    <!-- Floating Action Button -->
+    <!-- Floating Action Button dengan gradient -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_margin="24dp"
         android:contentDescription="@string/add_birthday"
-        android:src="@android:drawable/ic_input_add" />
+        android:src="@android:drawable/ic_input_add"
+        app:tint="@color/white"
+        app:backgroundTint="@color/accent"
+        app:elevation="8dp"
+        app:fabSize="normal" />
 
 </FrameLayout>
