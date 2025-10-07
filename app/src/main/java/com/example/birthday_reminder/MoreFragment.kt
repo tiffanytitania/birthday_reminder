@@ -1,59 +1,100 @@
 package com.example.birthday_reminder
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.birthday_reminder.data.api.RetrofitInstance
+import com.example.birthday_reminder.data.model.Quote
+import com.example.birthday_reminder.ui.adapter.QuoteAdapter
+import com.example.birthday_reminder.utils.NotificationHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [MoreFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class MoreFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private lateinit var recyclerView: RecyclerView
+    private var adapter: QuoteAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_more, container, false)
+    ): View {
+        val view = inflater.inflate(R.layout.fragment_more, container, false)
+        recyclerView = view.findViewById(R.id.rvQuotes)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+
+        // Pastikan permission notifikasi di Android 13+ sudah diberikan
+        requestNotificationPermission()
+
+        // Ambil data ucapan dari API
+        fetchQuotes()
+        return view
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment MoreFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            MoreFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private fun fetchQuotes() {
+        lifecycleScope.launch {
+            try {
+                val quotes = withContext(Dispatchers.IO) {
+                    RetrofitInstance.api.getQuotes()
                 }
+
+                adapter = QuoteAdapter(quotes) { selected ->
+                    sendBirthdayMessage(selected)
+                }
+                recyclerView.adapter = adapter
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(
+                    requireContext(),
+                    "Gagal mengambil data: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        }
+    }
+
+    private fun sendBirthdayMessage(quote: Quote) {
+        val text = quote.text ?: "Selamat ulang tahun penuh kebahagiaan!"
+        val author = quote.author ?: "Anonim"
+        val message = "Selamat Ulang Tahun! 🎉\n\n\"$text\"\n— $author"
+
+        // 🔹 Tampilkan notifikasi langsung di HP (fitur kirim antar pengguna)
+        NotificationHelper.showBirthdayNotification(
+            requireContext(),
+            name = "Temanmu", // nanti bisa diganti nama user dari database
+            message = message
+        )
+
+        // 🔹 (Masih bisa kirim lewat app lain juga)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, message)
+        }
+        startActivity(Intent.createChooser(intent, "Kirim ucapan via..."))
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
     }
 }

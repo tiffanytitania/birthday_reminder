@@ -166,8 +166,13 @@ class AddBirthdayFragment : Fragment() {
 
     private fun saveBirthday(name: String, date: String) {
         try {
-            val birthday = Birthday(name, date)
-            database.child("birthdays").push().setValue(birthday)
+            // buat map sederhana supaya tidak tergantung pada class Birthday
+            val birthdayMap = mapOf(
+                "name" to name,
+                "date" to date
+            )
+
+            database.child("birthdays").push().setValue(birthdayMap)
                 .addOnSuccessListener {
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
