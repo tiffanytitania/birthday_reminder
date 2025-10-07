@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">birthday_reminder</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="home_calendar_label">Pilih tanggal untuk melihat siapa yang ulang tahun</string>
+    <string name="add_calendar_label">Add New Birthday</string>
+    <string name="more_calendar_label">More To Go...</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_add">Add</string>
+    <string name="nav_more">More</string>
+
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="nama">Nama</string>
+    <string name="pilih_tanggal">Pilih Tanggal</string>
+    <string name="simpan">Simpan</string>
+</resources>

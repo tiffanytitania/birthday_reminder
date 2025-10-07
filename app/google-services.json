@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "808124936895",
+    "project_id": "birthday-reminder-f26d8",
+    "storage_bucket": "birthday-reminder-f26d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:808124936895:android:b697131d4539fd11208c0a",
+        "android_client_info": {
+          "package_name": "com.birthday_reminder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtZaIS2NGfdW-MGyjmqah1OJ1ToMP_zIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:808124936895:android:1116eac44fb29b61208c0a",
+        "android_client_info": {
+          "package_name": "com.example.bday_reminder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtZaIS2NGfdW-MGyjmqah1OJ1ToMP_zIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:808124936895:android:b7e1b04ab39a8699208c0a",
+        "android_client_info": {
+          "package_name": "com.example.birthday_reminder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtZaIS2NGfdW-MGyjmqah1OJ1ToMP_zIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
