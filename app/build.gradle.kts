@@ -56,4 +56,5 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
     implementation("com.google.firebase:firebase-database-ktx:20.3.1")
     implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
+    implementation("com.prolificinteractive:material-calendarview:1.4.3")
 }
