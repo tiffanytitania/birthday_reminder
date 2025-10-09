@@ -23,6 +23,7 @@ class AddBirthdayFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var adapter: BirthdayAdapter
     private val birthdayList = mutableListOf<BirthdayItem>()
+    private val filteredList = mutableListOf<BirthdayItem>()
     private var birthdayListener: ValueEventListener? = null
 
     override fun onCreateView(
@@ -41,6 +42,7 @@ class AddBirthdayFragment : Fragment() {
                 .reference
 
             setupRecyclerView()
+            setupSearch()
             loadBirthdays()
 
             binding.fabAdd.setOnClickListener {
@@ -53,11 +55,44 @@ class AddBirthdayFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = BirthdayAdapter(birthdayList) { birthdayItem ->
+        adapter = BirthdayAdapter(filteredList) { birthdayItem ->
             showDeleteConfirmation(birthdayItem)
         }
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
+    }
+
+    // 🔍 FITUR BARU: SEARCH SETUP
+    private fun setupSearch() {
+        binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filterBirthdays(newText ?: "")
+                return true
+            }
+        })
+    }
+
+    // 🔍 FITUR BARU: FILTER LOGIC
+    private fun filterBirthdays(query: String) {
+        filteredList.clear()
+
+        if (query.isEmpty()) {
+            // Kalau search kosong, tampilkan semua
+            filteredList.addAll(birthdayList)
+        } else {
+            // Filter berdasarkan nama (case-insensitive)
+            val filtered = birthdayList.filter { item ->
+                item.name.lowercase().contains(query.lowercase())
+            }
+            filteredList.addAll(filtered)
+        }
+
+        adapter.notifyDataSetChanged()
+        updateEmptyState()
     }
 
     private fun loadBirthdays() {
@@ -77,11 +112,11 @@ class AddBirthdayFragment : Fragment() {
                     }
                 }
 
-                // Update adapter safely
                 activity?.runOnUiThread {
                     if (isAdded && _binding != null) {
-                        adapter.notifyDataSetChanged()
-                        updateEmptyState()
+                        // 🔍 Refresh dengan filter yang sekarang ada
+                        val currentQuery = binding.searchView.query.toString()
+                        filterBirthdays(currentQuery)
                     }
                 }
             }
@@ -101,7 +136,7 @@ class AddBirthdayFragment : Fragment() {
     private fun updateEmptyState() {
         if (_binding == null) return
 
-        if (birthdayList.isEmpty()) {
+        if (filteredList.isEmpty()) {
             binding.emptyState.visibility = View.VISIBLE
             binding.recyclerView.visibility = View.GONE
         } else {
@@ -118,7 +153,6 @@ class AddBirthdayFragment : Fragment() {
             val etName = dialogView.findViewById<EditText>(R.id.etDialogName)
             val etDate = dialogView.findViewById<EditText>(R.id.etDialogDate)
 
-            // Date picker untuk field tanggal
             etDate.setOnClickListener {
                 if (!isAdded || context == null) return@setOnClickListener
 
@@ -166,7 +200,6 @@ class AddBirthdayFragment : Fragment() {
 
     private fun saveBirthday(name: String, date: String) {
         try {
-            // buat map sederhana supaya tidak tergantung pada class Birthday
             val birthdayMap = mapOf(
                 "name" to name,
                 "date" to date
@@ -239,7 +272,6 @@ class AddBirthdayFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Remove listener to prevent memory leak
         birthdayListener?.let {
             database.child("birthdays").removeEventListener(it)
         }
@@ -247,14 +279,12 @@ class AddBirthdayFragment : Fragment() {
     }
 }
 
-// Data class untuk item dengan key
 data class BirthdayItem(
     val key: String,
     val name: String,
     val date: String
 )
 
-// Adapter untuk RecyclerView
 class BirthdayAdapter(
     private val items: MutableList<BirthdayItem>,
     private val onDeleteClick: (BirthdayItem) -> Unit
