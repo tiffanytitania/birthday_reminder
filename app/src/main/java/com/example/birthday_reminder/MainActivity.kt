@@ -13,8 +13,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.work.*
 import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.databinding.ActivityMainBinding
+import com.example.birthday_reminder.worker.BirthdayWorker
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -48,17 +51,25 @@ class MainActivity : AppCompatActivity() {
             createNotificationChannel()
             requestNotificationPermission()
 
-            // Default fragment saat aplikasi dibuka
-            replaceFragment(HomeFragment())
+            // 🆕 Setup WorkManager untuk notifikasi otomatis
+            setupBirthdayNotifications()
+
+            // Default fragment saat aplikasi dibuka (ganti ke UpcomingBirthdaysFragment)
+            replaceFragment(UpcomingBirthdaysFragment())
 
             binding.bottomNavigation.setOnItemSelectedListener { item ->
                 when (item.itemId) {
                     R.id.nav_home -> replaceFragment(HomeFragment())
+                    R.id.nav_upcoming -> replaceFragment(UpcomingBirthdaysFragment())
                     R.id.nav_add -> replaceFragment(AddBirthdayFragment())
+                    R.id.nav_statistics -> replaceFragment(StatisticsFragment())
                     R.id.nav_more -> replaceFragment(MoreFragment())
                 }
                 true
             }
+
+            // Set default selected item
+            binding.bottomNavigation.selectedItemId = R.id.nav_upcoming
 
             // Tambahkan logout button di header
             binding.btnLogout.setOnClickListener {
@@ -72,6 +83,46 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Error in onCreate", e)
             e.printStackTrace()
         }
+    }
+
+    // 🆕 Setup WorkManager untuk cek ulang tahun setiap hari
+    private fun setupBirthdayNotifications() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // Jalankan setiap hari jam 8 pagi
+        val dailyWorkRequest = PeriodicWorkRequestBuilder<BirthdayWorker>(
+            24, TimeUnit.HOURS  // Setiap 24 jam
+        )
+            .setConstraints(constraints)
+            .setInitialDelay(calculateInitialDelay(), TimeUnit.MILLISECONDS)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "birthday_notification_work",
+            ExistingPeriodicWorkPolicy.KEEP,  // Jangan duplikat
+            dailyWorkRequest
+        )
+
+        Log.d("MainActivity", "WorkManager setup complete")
+    }
+
+    // Hitung delay hingga jam 8 pagi besok
+    private fun calculateInitialDelay(): Long {
+        val currentTime = System.currentTimeMillis()
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 8)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+
+            // Jika sudah lewat jam 8, set untuk besok
+            if (timeInMillis <= currentTime) {
+                add(java.util.Calendar.DAY_OF_MONTH, 1)
+            }
+        }
+
+        return calendar.timeInMillis - currentTime
     }
 
     private fun showLogoutDialog() {

@@ -1,7 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/white"/>
-    <corners
-        android:topLeftRadius="20dp"
-        android:topRightRadius="20dp" />
-</shape>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_today"
+        android:title="Kalender" />
+    <item
+        android:id="@+id/nav_upcoming"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="Dashboard" />
+    <item
+        android:id="@+id/nav_add"
+        android:icon="@android:drawable/ic_input_add"
+        android:title="Kelola" />
+    <item
+        android:id="@+id/nav_statistics"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        android:title="Statistik" />
+    <item
+        android:id="@+id/nav_more"
+        android:icon="@android:drawable/ic_menu_more"
+        android:title="Ucapan" />
+</menu>
