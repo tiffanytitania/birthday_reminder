@@ -3,14 +3,17 @@ package com.example.birthday_reminder
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -23,6 +26,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Cek apakah user sudah login
+        if (!UserManager.isLoggedIn()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
 
         // Catch uncaught exceptions
         Thread.setDefaultUncaughtExceptionHandler { _, e ->
@@ -49,10 +59,32 @@ class MainActivity : AppCompatActivity() {
                 }
                 true
             }
+
+            // Tambahkan logout button di header
+            binding.btnLogout.setOnClickListener {
+                showLogoutDialog()
+            }
+
+            // Update welcome text dengan username
+            binding.tvWelcome.text = "Halo, ${UserManager.getCurrentUser()}! 👋"
+
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in onCreate", e)
             e.printStackTrace()
         }
+    }
+
+    private fun showLogoutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Logout")
+            .setMessage("Apakah Anda yakin ingin keluar?")
+            .setPositiveButton("Ya") { _, _ ->
+                UserManager.logout()
+                startActivity(Intent(this, LoginActivity::class.java))
+                finish()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
     }
 
     private fun replaceFragment(fragment: Fragment) {
