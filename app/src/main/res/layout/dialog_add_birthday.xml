@@ -6,7 +6,9 @@
     android:padding="24dp"
     android:background="@drawable/dialog_background">
 
+    <!-- 🆕 TITLE (bisa berubah antara "Tambah" atau "Edit") -->
     <TextView
+        android:id="@+id/tvDialogTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="🎉 Tambah Ulang Tahun Baru"

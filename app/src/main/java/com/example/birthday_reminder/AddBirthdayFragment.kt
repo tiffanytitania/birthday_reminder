@@ -55,14 +55,18 @@ class AddBirthdayFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = BirthdayAdapter(filteredList) { birthdayItem ->
-            showDeleteConfirmation(birthdayItem)
-        }
+        adapter = BirthdayAdapter(filteredList,
+            onDeleteClick = { birthdayItem ->
+                showDeleteConfirmation(birthdayItem)
+            },
+            onEditClick = { birthdayItem ->  // 🆕 EDIT CALLBACK
+                showEditBirthdayDialog(birthdayItem)
+            }
+        )
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
     }
 
-    // 🔍 FITUR BARU: SEARCH SETUP
     private fun setupSearch() {
         binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -76,15 +80,12 @@ class AddBirthdayFragment : Fragment() {
         })
     }
 
-    // 🔍 FITUR BARU: FILTER LOGIC
     private fun filterBirthdays(query: String) {
         filteredList.clear()
 
         if (query.isEmpty()) {
-            // Kalau search kosong, tampilkan semua
             filteredList.addAll(birthdayList)
         } else {
-            // Filter berdasarkan nama (case-insensitive)
             val filtered = birthdayList.filter { item ->
                 item.name.lowercase().contains(query.lowercase())
             }
@@ -114,7 +115,6 @@ class AddBirthdayFragment : Fragment() {
 
                 activity?.runOnUiThread {
                     if (isAdded && _binding != null) {
-                        // 🔍 Refresh dengan filter yang sekarang ada
                         val currentQuery = binding.searchView.query.toString()
                         filterBirthdays(currentQuery)
                     }
@@ -152,6 +152,9 @@ class AddBirthdayFragment : Fragment() {
             val dialogView = layoutInflater.inflate(R.layout.dialog_add_birthday, null)
             val etName = dialogView.findViewById<EditText>(R.id.etDialogName)
             val etDate = dialogView.findViewById<EditText>(R.id.etDialogDate)
+            val tvTitle = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
+
+            tvTitle.text = "🎉 Tambah Ulang Tahun Baru"
 
             etDate.setOnClickListener {
                 if (!isAdded || context == null) return@setOnClickListener
@@ -175,7 +178,6 @@ class AddBirthdayFragment : Fragment() {
             }
 
             AlertDialog.Builder(requireContext())
-                .setTitle("Tambah Ulang Tahun")
                 .setView(dialogView)
                 .setPositiveButton("Simpan") { dialog, _ ->
                     val name = etName.text.toString().trim()
@@ -185,6 +187,65 @@ class AddBirthdayFragment : Fragment() {
                         Toast.makeText(requireContext(), "Harap isi semua field", Toast.LENGTH_SHORT).show()
                     } else {
                         saveBirthday(name, date)
+                        dialog.dismiss()
+                    }
+                }
+                .setNegativeButton("Batal") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 🆕 FITUR BARU: EDIT DIALOG
+    private fun showEditBirthdayDialog(birthdayItem: BirthdayItem) {
+        if (!isAdded || context == null) return
+
+        try {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_add_birthday, null)
+            val etName = dialogView.findViewById<EditText>(R.id.etDialogName)
+            val etDate = dialogView.findViewById<EditText>(R.id.etDialogDate)
+            val tvTitle = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
+
+            // Pre-fill dengan data existing
+            etName.setText(birthdayItem.name)
+            etDate.setText(birthdayItem.date)
+            tvTitle.text = "✏️ Edit Ulang Tahun"
+
+            etDate.setOnClickListener {
+                if (!isAdded || context == null) return@setOnClickListener
+
+                try {
+                    val calendar = Calendar.getInstance()
+                    val year = calendar.get(Calendar.YEAR)
+                    val month = calendar.get(Calendar.MONTH)
+                    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+                    val datePicker = DatePickerDialog(requireContext(),
+                        { _, selectedYear, selectedMonth, selectedDay ->
+                            etDate.setText("$selectedDay/${selectedMonth + 1}/$selectedYear")
+                        }, year, month, day)
+
+                    datePicker.show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "Error membuka date picker", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .setPositiveButton("Update") { dialog, _ ->
+                    val name = etName.text.toString().trim()
+                    val date = etDate.text.toString().trim()
+
+                    if (name.isEmpty() || date.isEmpty()) {
+                        Toast.makeText(requireContext(), "Harap isi semua field", Toast.LENGTH_SHORT).show()
+                    } else {
+                        updateBirthday(birthdayItem.key, name, date)
                         dialog.dismiss()
                     }
                 }
@@ -210,6 +271,35 @@ class AddBirthdayFragment : Fragment() {
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
                             Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 🆕 FITUR BARU: UPDATE LOGIC
+    private fun updateBirthday(key: String, name: String, date: String) {
+        try {
+            val updates = mapOf(
+                "name" to name,
+                "date" to date
+            )
+
+            database.child("birthdays").child(key).updateChildren(updates)
+                .addOnSuccessListener {
+                    activity?.runOnUiThread {
+                        if (isAdded && context != null) {
+                            Toast.makeText(requireContext(), "Berhasil diupdate", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -287,13 +377,15 @@ data class BirthdayItem(
 
 class BirthdayAdapter(
     private val items: MutableList<BirthdayItem>,
-    private val onDeleteClick: (BirthdayItem) -> Unit
+    private val onDeleteClick: (BirthdayItem) -> Unit,
+    private val onEditClick: (BirthdayItem) -> Unit  // 🆕 EDIT CALLBACK
 ) : RecyclerView.Adapter<BirthdayAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvName: TextView = view.findViewById(R.id.tvName)
         val tvDate: TextView = view.findViewById(R.id.tvDate)
         val btnDelete: ImageButton = view.findViewById(R.id.btnDelete)
+        val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)  // 🆕 EDIT BUTTON
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -306,6 +398,11 @@ class BirthdayAdapter(
         val item = items[position]
         holder.tvName.text = item.name
         holder.tvDate.text = item.date
+
+        holder.btnEdit.setOnClickListener {
+            onEditClick(item)
+        }
+
         holder.btnDelete.setOnClickListener {
             onDeleteClick(item)
         }

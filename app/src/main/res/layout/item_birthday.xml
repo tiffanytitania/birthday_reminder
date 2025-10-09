@@ -17,7 +17,7 @@
         android:padding="16dp"
         android:gravity="center_vertical">
 
-        <!-- Icon Ulang Tahun dengan background -->
+        <!-- Icon Ulang Tahun -->
         <LinearLayout
             android:layout_width="60dp"
             android:layout_height="60dp"
@@ -61,23 +61,52 @@
                 android:fontFamily="@font/comic_sans"/>
         </LinearLayout>
 
-        <!-- Tombol Delete dengan custom background -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- 🆕 BUTTONS CONTAINER (Edit + Delete) -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            android:backgroundTint="@color/delete_red">
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:spacing="8dp">
 
-            <ImageButton
-                android:id="@+id/btnDelete"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_delete"
-                android:tint="@color/white"
-                android:contentDescription="@string/delete_birthday"/>
-        </com.google.android.material.card.MaterialCardView>
+            <!-- Edit Button (BARU) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:backgroundTint="@color/accent"
+                android:layout_marginEnd="8dp">
+
+                <ImageButton
+                    android:id="@+id/btnEdit"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="@color/white"
+                    android:contentDescription="Edit Birthday"/>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Delete Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:backgroundTint="@color/delete_red">
+
+                <ImageButton
+                    android:id="@+id/btnDelete"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_delete"
+                    app:tint="@color/white"
+                    android:contentDescription="@string/delete_birthday"/>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
 
     </LinearLayout>
 
