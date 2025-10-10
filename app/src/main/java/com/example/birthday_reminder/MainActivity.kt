@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -30,7 +31,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Cek apakah user sudah login
+        // 🆕 INISIALISASI UserManager dengan context
+        UserManager.init(this)
+
+        // Cek apakah user sudah login (dengan persistence)
         if (!UserManager.isLoggedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -47,49 +51,33 @@ class MainActivity : AppCompatActivity() {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
 
-            // Buat Notification Channel (sekali di awal)
+            // Buat Notification Channel
             createNotificationChannel()
             requestNotificationPermission()
 
-            // 🆕 Setup WorkManager untuk notifikasi otomatis
+            // Setup WorkManager untuk notifikasi otomatis
             setupBirthdayNotifications()
 
             // Default fragment saat aplikasi dibuka
             replaceFragment(HomeFragment())
 
-            binding.bottomNavigation.setOnItemSelectedListener { item ->
-                when (item.itemId) {
-                    R.id.nav_home -> {
-                        replaceFragment(HomeFragment())
-                        true
-                    }
-                    R.id.nav_upcoming -> {
-                        replaceFragment(UpcomingBirthdaysFragment())  // ✅ SUDAH ADA
-                        true
-                    }
-                    R.id.nav_add -> {
-                        replaceFragment(AddBirthdayFragment())
-                        true
-                    }
-                    R.id.nav_statistics -> {
-                        replaceFragment(StatisticsFragment())  // ✅ SUDAH ADA
-                        true
-                    }
-                    R.id.nav_more -> {
-                        replaceFragment(MoreFragment())
-                        true
-                    }
-                    else -> false
-                }
-            }
+            // 🆕 Setup bottom navigation dengan fitur admin
+            setupBottomNavigation()
 
-            // Tambahkan logout button di header
+            // Logout button
             binding.btnLogout.setOnClickListener {
                 showLogoutDialog()
             }
 
-            // Update welcome text dengan username
-            binding.tvWelcome.text = "Halo, ${UserManager.getCurrentUser()}! 👋"
+            // 🆕 Update welcome text dengan role
+            updateWelcomeText()
+
+            // 🆕 Show admin badge jika user adalah admin
+            if (UserManager.isAdmin()) {
+                binding.tvAdminBadge.visibility = View.VISIBLE
+            } else {
+                binding.tvAdminBadge.visibility = View.GONE
+            }
 
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in onCreate", e)
@@ -97,15 +85,97 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 🆕 Setup WorkManager untuk cek ulang tahun setiap hari
+    // 🆕 Setup bottom navigation dengan conditional admin menu
+    private fun setupBottomNavigation() {
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    replaceFragment(HomeFragment())
+                    true
+                }
+                R.id.nav_upcoming -> {
+                    replaceFragment(UpcomingBirthdaysFragment())
+                    true
+                }
+                R.id.nav_add -> {
+                    replaceFragment(AddBirthdayFragment())
+                    true
+                }
+                R.id.nav_statistics -> {
+                    replaceFragment(StatisticsFragment())
+                    true
+                }
+                R.id.nav_more -> {
+                    showMoreMenu()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    // 🆕 Show menu "More" dengan opsi profil dan admin panel
+    private fun showMoreMenu() {
+        val options = mutableListOf<String>()
+        options.add("👤 Profil Saya")
+        options.add("💬 Ucapan & Quotes")
+
+        // Tambahkan opsi admin jika user adalah admin
+        if (UserManager.isAdmin()) {
+            options.add("👑 Panel Admin")
+        }
+
+        options.add("❓ Tentang Aplikasi")
+
+        AlertDialog.Builder(this)
+            .setTitle("Menu Lainnya")
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "👤 Profil Saya" -> replaceFragment(ProfileFragment())
+                    "💬 Ucapan & Quotes" -> replaceFragment(MoreFragment())
+                    "👑 Panel Admin" -> replaceFragment(AdminPanelFragment())
+                    "❓ Tentang Aplikasi" -> showAboutDialog()
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    // 🆕 Update welcome text dengan role
+    private fun updateWelcomeText() {
+        val username = UserManager.getCurrentUser() ?: "Guest"
+        val role = if (UserManager.isAdmin()) "Admin" else "Anggota"
+        binding.tvWelcome.text = "Halo, $username ($role)! 👋"
+    }
+
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Tentang Aplikasi")
+            .setMessage("""
+                Birthday Reminder
+                Versi 2.0
+                
+                Aplikasi pengingat ulang tahun untuk komunitas dengan fitur:
+                • Kalender ulang tahun
+                • Notifikasi otomatis
+                • Statistik komunitas
+                • Ucapan & quotes
+                • Panel admin
+                • Dan lainnya!
+                
+                © 2025 Birthday Reminder Team
+            """.trimIndent())
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
     private fun setupBirthdayNotifications() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        // Jalankan setiap hari jam 8 pagi
         val dailyWorkRequest = PeriodicWorkRequestBuilder<BirthdayWorker>(
-            24, TimeUnit.HOURS  // Setiap 24 jam
+            24, TimeUnit.HOURS
         )
             .setConstraints(constraints)
             .setInitialDelay(calculateInitialDelay(), TimeUnit.MILLISECONDS)
@@ -113,14 +183,13 @@ class MainActivity : AppCompatActivity() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "birthday_notification_work",
-            ExistingPeriodicWorkPolicy.KEEP,  // Jangan duplikat
+            ExistingPeriodicWorkPolicy.KEEP,
             dailyWorkRequest
         )
 
         Log.d("MainActivity", "WorkManager setup complete")
     }
 
-    // Hitung delay hingga jam 8 pagi besok
     private fun calculateInitialDelay(): Long {
         val currentTime = System.currentTimeMillis()
         val calendar = java.util.Calendar.getInstance().apply {
@@ -128,7 +197,6 @@ class MainActivity : AppCompatActivity() {
             set(java.util.Calendar.MINUTE, 0)
             set(java.util.Calendar.SECOND, 0)
 
-            // Jika sudah lewat jam 8, set untuk besok
             if (timeInMillis <= currentTime) {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
@@ -142,7 +210,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Logout")
             .setMessage("Apakah Anda yakin ingin keluar?")
             .setPositiveButton("Ya") { _, _ ->
-                UserManager.logout()
+                UserManager.logout() // 🆕 Menggunakan logout dengan persistence
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()
             }
@@ -161,7 +229,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Membuat Notification Channel (dibutuhkan Android 8+)
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -177,7 +244,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Minta izin notifikasi jika Android 13+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(

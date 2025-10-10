@@ -13,6 +13,9 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 🆕 PENTING: Init UserManager dulu sebelum cek login
+        UserManager.init(this)
+
         // Cek apakah sudah login sebelumnya
         if (UserManager.isLoggedIn()) {
             navigateToMain()
