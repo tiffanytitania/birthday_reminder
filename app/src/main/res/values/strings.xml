@@ -1,21 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">birthday_reminder</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="home_calendar_label">Pilih tanggal untuk melihat siapa yang ulang tahun</string>
-    <string name="add_calendar_label">Add New Birthday</string>
-    <string name="more_calendar_label">More To Go...</string>
-
-    <string name="nav_home">Home</string>
-    <string name="nav_add">Add</string>
-    <string name="nav_more">More</string>
-
-
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="nama">Nama</string>
-    <string name="pilih_tanggal">Pilih Tanggal</string>
-    <string name="simpan">Simpan</string>
-
-    <!-- New strings -->
+    <!-- Existing strings -->
+    <string name="app_name">Birthday Reminder</string>
+    <string name="nav_home">Kalender</string>
+    <string name="nav_add">Kelola</string>
+    <string name="nav_more">Ucapan</string>
     <string name="add_birthday">Tambah Ulang Tahun</string>
     <string name="delete_birthday">Hapus Ulang Tahun</string>
+    <string name="nama">Nama</string>
+    <string name="pilih_tanggal">Pilih Tanggal</string>
+
+    <!-- 🆕 NEW STRINGS untuk fitur baru -->
+    <string name="nav_upcoming">Dashboard</string>
+    <string name="nav_statistics">Statistik</string>
+
+    <!-- Dashboard -->
+    <string name="birthdays_today">Ulang Tahun Hari Ini</string>
+    <string name="birthdays_this_week">Minggu Ini</string>
+    <string name="birthdays_this_month">Bulan Ini</string>
+    <string name="no_birthdays_today">Tidak ada ulang tahun hari ini</string>
+    <string name="no_birthdays_this_week">Tidak ada ulang tahun minggu ini</string>
+    <string name="no_birthdays_this_month">Tidak ada ulang tahun bulan ini</string>
+    <string name="person_count">%d orang</string>
+
+    <!-- Statistics -->
+    <string name="statistics_title">Statistik Komunitas</string>
+    <string name="total_members">Total Anggota</string>
+    <string name="birthdays_today_stat">Hari Ini</string>
+    <string name="birthdays_week_stat">Minggu Ini</string>
+    <string name="birthdays_month_stat">Bulan Ini</string>
+    <string name="age_statistics">Statistik Usia</string>
+    <string name="average_age">Rata-rata Usia:</string>
+    <string name="oldest_member">Anggota Tertua:</string>
+    <string name="youngest_member">Anggota Termuda:</string>
+    <string name="years_old">%d tahun</string>
+
+    <!-- Notifications -->
+    <string name="notification_birthday_today">🎉 Hari ini ulang tahun %s! Jangan lupa ucapkan selamat!</string>
+    <string name="notification_birthday_tomorrow">⏰ Besok ulang tahun %s! Siapkan ucapanmu!</string>
+    <string name="notification_birthday_3days">📅 3 hari lagi ulang tahun %s!</string>
+    <string name="notification_title">Pengingat Ulang Tahun</string>
+
+    <!-- Common -->
+    <string name="loading">Memuat…</string>
+    <string name="error_loading">Gagal memuat data</string>
+    <string name="no_data">Tidak ada data</string>
+    <string name="refresh">Refresh</string>
+
+    <!-- Date Format -->
+    <string name="date_format">dd/MM/yyyy</string>
+    <string name="date_display">%d/%d/%d</string>
 </resources>
