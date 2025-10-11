@@ -14,9 +14,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.work.*
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.databinding.ActivityMainBinding
+import com.example.birthday_reminder.messaging.MessageManager
 import com.example.birthday_reminder.worker.BirthdayWorker
 import java.util.concurrent.TimeUnit
 
@@ -31,8 +36,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🆕 INISIALISASI UserManager dengan context
+        // Inisialisasi UserManager dengan context
         UserManager.init(this)
+
+        // Inisialisasi MessageManager (untuk fitur messaging)
+        MessageManager.init(this)
 
         // Cek apakah user sudah login (dengan persistence)
         if (!UserManager.isLoggedIn()) {
@@ -61,7 +69,7 @@ class MainActivity : AppCompatActivity() {
             // Default fragment saat aplikasi dibuka
             replaceFragment(HomeFragment())
 
-            // 🆕 Setup bottom navigation dengan fitur admin
+            // Setup bottom navigation dengan fitur admin
             setupBottomNavigation()
 
             // Logout button
@@ -69,10 +77,10 @@ class MainActivity : AppCompatActivity() {
                 showLogoutDialog()
             }
 
-            // 🆕 Update welcome text dengan role
+            // Update welcome text dengan role
             updateWelcomeText()
 
-            // 🆕 Show admin badge jika user adalah admin
+            // Show admin badge jika user adalah admin
             if (UserManager.isAdmin()) {
                 binding.tvAdminBadge.visibility = View.VISIBLE
             } else {
@@ -85,7 +93,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 🆕 Setup bottom navigation dengan conditional admin menu
     private fun setupBottomNavigation() {
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -114,11 +121,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 🆕 Show menu "More" dengan opsi profil dan admin panel
     private fun showMoreMenu() {
         val options = mutableListOf<String>()
         options.add("👤 Profil Saya")
         options.add("💬 Ucapan & Quotes")
+        options.add("📜 Riwayat Pesan")
+        options.add("🔔 Pengaturan Notifikasi") // 🆕 BARU!
 
         // Tambahkan opsi admin jika user adalah admin
         if (UserManager.isAdmin()) {
@@ -133,6 +141,8 @@ class MainActivity : AppCompatActivity() {
                 when (options[which]) {
                     "👤 Profil Saya" -> replaceFragment(ProfileFragment())
                     "💬 Ucapan & Quotes" -> replaceFragment(MoreFragment())
+                    "📜 Riwayat Pesan" -> replaceFragment(HistoryFragment())
+                    "🔔 Pengaturan Notifikasi" -> replaceFragment(NotificationSettingsFragment()) // 🆕 BARU!
                     "👑 Panel Admin" -> replaceFragment(AdminPanelFragment())
                     "❓ Tentang Aplikasi" -> showAboutDialog()
                 }
@@ -141,7 +151,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // 🆕 Update welcome text dengan role
     private fun updateWelcomeText() {
         val username = UserManager.getCurrentUser() ?: "Guest"
         val role = if (UserManager.isAdmin()) "Admin" else "Anggota"
@@ -161,6 +170,8 @@ class MainActivity : AppCompatActivity() {
                 • Statistik komunitas
                 • Ucapan & quotes
                 • Panel admin
+                • Sistem messaging internal
+                • Role management
                 • Dan lainnya!
                 
                 © 2025 Birthday Reminder Team
@@ -210,7 +221,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Logout")
             .setMessage("Apakah Anda yakin ingin keluar?")
             .setPositiveButton("Ya") { _, _ ->
-                UserManager.logout() // 🆕 Menggunakan logout dengan persistence
+                UserManager.logout()
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()
             }

@@ -3,15 +3,16 @@ package com.example.birthday_reminder.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.birthday_reminder.settings.NotificationSettingsManager
 import com.example.birthday_reminder.utils.NotificationHelper
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Worker yang menjalankan pengecekan ulang tahun secara otomatis
+ * Support custom notification settings dari NotificationSettingsFragment
+ */
 class BirthdayWorker(
     context: Context,
     params: WorkerParameters
@@ -28,24 +29,22 @@ class BirthdayWorker(
     }
 
     private suspend fun checkBirthdays() {
+        // Inisialisasi NotificationSettingsManager
+        NotificationSettingsManager.init(applicationContext)
+
+        // Ambil settings dari user
+        val settings = NotificationSettingsManager.getSettings()
+
+        // Cek apakah notifikasi enabled
+        if (!settings.enabled) {
+            return // Skip jika notifikasi dimatikan
+        }
+
         val database = FirebaseDatabase.getInstance(
             "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
         val snapshot = database.child("birthdays").get().await()
-        val today = Calendar.getInstance()
-        val todayDay = today.get(Calendar.DAY_OF_MONTH)
-        val todayMonth = today.get(Calendar.MONTH) + 1
-
-        // H-1 (besok)
-        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 1) }
-        val tomorrowDay = tomorrow.get(Calendar.DAY_OF_MONTH)
-        val tomorrowMonth = tomorrow.get(Calendar.MONTH) + 1
-
-        // H-3 (3 hari lagi)
-        val threeDaysLater = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 3) }
-        val threeDaysDay = threeDaysLater.get(Calendar.DAY_OF_MONTH)
-        val threeDaysMonth = threeDaysLater.get(Calendar.MONTH) + 1
 
         for (data in snapshot.children) {
             val name = data.child("name").getValue(String::class.java) ?: continue
@@ -57,31 +56,29 @@ class BirthdayWorker(
             val birthDay = parts[0].toIntOrNull() ?: continue
             val birthMonth = parts[1].toIntOrNull() ?: continue
 
-            // H-0: Hari ini ulang tahun
-            if (birthDay == todayDay && birthMonth == todayMonth) {
-                NotificationHelper.showBirthdayNotification(
-                    applicationContext,
-                    name,
-                    "🎉 Hari ini ulang tahun $name! Jangan lupa ucapkan selamat!"
-                )
-            }
+            // Cek untuk setiap hari yang enabled di settings
+            for (daysAhead in settings.daysAhead) {
+                val targetDate = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_MONTH, daysAhead)
+                }
+                val targetDay = targetDate.get(Calendar.DAY_OF_MONTH)
+                val targetMonth = targetDate.get(Calendar.MONTH) + 1
 
-            // H-1: Besok ulang tahun
-            if (birthDay == tomorrowDay && birthMonth == tomorrowMonth) {
-                NotificationHelper.showBirthdayNotification(
-                    applicationContext,
-                    name,
-                    "⏰ Besok ulang tahun $name! Siapkan ucapanmu!"
-                )
-            }
+                if (birthDay == targetDay && birthMonth == targetMonth) {
+                    val message = when (daysAhead) {
+                        0 -> "🎉 Hari ini ulang tahun $name! Jangan lupa ucapkan selamat!"
+                        1 -> "⏰ Besok ulang tahun $name! Siapkan ucapanmu!"
+                        3 -> "📅 3 hari lagi ulang tahun $name!"
+                        7 -> "📆 Seminggu lagi ulang tahun $name!"
+                        else -> "🎂 $daysAhead hari lagi ulang tahun $name!"
+                    }
 
-            // H-3: 3 hari lagi ulang tahun
-            if (birthDay == threeDaysDay && birthMonth == threeDaysMonth) {
-                NotificationHelper.showBirthdayNotification(
-                    applicationContext,
-                    name,
-                    "📅 3 hari lagi ulang tahun $name!"
-                )
+                    NotificationHelper.showBirthdayNotification(
+                        applicationContext,
+                        name,
+                        message
+                    )
+                }
             }
         }
     }

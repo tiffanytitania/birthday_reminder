@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    android:backgroundTint="@color/white">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Unread Indicator -->
+        <View
+            android:id="@+id/unreadIndicator"
+            android:layout_width="8dp"
+            android:layout_height="match_parent"
+            android:layout_alignParentStart="true"
+            android:background="@color/accent"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone"/>
+
+        <!-- Message Type Icon -->
+        <TextView
+            android:id="@+id/tvMessageTypeIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_toEndOf="@id/unreadIndicator"
+            android:text="🎉"
+            android:textSize="28sp"
+            android:gravity="center"
+            android:layout_marginEnd="12dp"/>
+
+        <!-- Content Layout -->
+        <LinearLayout
+            android:id="@+id/contentLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/tvMessageTypeIcon"
+            android:layout_toStartOf="@id/btnDeleteMessage"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvMessageFrom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dari: Admin"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:fontFamily="@font/comic_sans"/>
+
+            <TextView
+                android:id="@+id/tvMessageContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Selamat ulang tahun! Semoga panjang umur..."
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/comic_sans"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:id="@+id/tvMessageTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="01/01/2025 10:30"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/comic_sans"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <!-- Delete Button -->
+        <ImageButton
+            android:id="@+id/btnDeleteMessage"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="@color/delete_red"
+            android:contentDescription="Delete Message"/>
+
+    </RelativeLayout>
+</com.google.android.material.card.MaterialCardView>

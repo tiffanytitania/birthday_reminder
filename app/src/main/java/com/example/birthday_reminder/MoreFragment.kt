@@ -13,9 +13,9 @@ import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.birthday_reminder.data.api.RetrofitInstance
 import com.example.birthday_reminder.data.model.Quote
+import com.example.birthday_reminder.databinding.FragmentMoreBinding
 import com.example.birthday_reminder.ui.adapter.QuoteAdapter
 import com.example.birthday_reminder.utils.NotificationHelper
 import kotlinx.coroutines.Dispatchers
@@ -24,23 +24,53 @@ import kotlinx.coroutines.withContext
 
 class MoreFragment : Fragment() {
 
-    private lateinit var recyclerView: RecyclerView
+    private var _binding: FragmentMoreBinding? = null
+    private val binding get() = _binding!!
+
     private var adapter: QuoteAdapter? = null
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val view = inflater.inflate(R.layout.fragment_more, container, false)
-        recyclerView = view.findViewById(R.id.rvQuotes)
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        _binding = FragmentMoreBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Setup RecyclerView
+        binding.rvQuotes.layoutManager = LinearLayoutManager(requireContext())
 
         // Pastikan permission notifikasi di Android 13+ sudah diberikan
         requestNotificationPermission()
 
+        // 🆕 Setup navigation cards untuk messaging features
+        setupMessagingMenu()
+
         // Ambil data ucapan dari API
         fetchQuotes()
-        return view
+    }
+
+    // 🆕 Setup menu cards untuk Kirim Ucapan & Kotak Pesan
+    private fun setupMessagingMenu() {
+        // Card: Kirim Ucapan
+        binding.cardSendGreeting.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.frame_container, SendGreetingFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        // Card: Kotak Pesan (Inbox)
+        binding.cardInbox.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.frame_container, MessagingFragment())
+                .addToBackStack(null)
+                .commit()
+        }
     }
 
     private fun fetchQuotes() {
@@ -53,7 +83,7 @@ class MoreFragment : Fragment() {
                 adapter = QuoteAdapter(quotes) { selected ->
                     sendBirthdayMessage(selected)
                 }
-                recyclerView.adapter = adapter
+                binding.rvQuotes.adapter = adapter
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -96,5 +126,10 @@ class MoreFragment : Fragment() {
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
             }
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
