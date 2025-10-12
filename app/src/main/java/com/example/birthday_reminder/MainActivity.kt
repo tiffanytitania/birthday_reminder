@@ -124,9 +124,10 @@ class MainActivity : AppCompatActivity() {
     private fun showMoreMenu() {
         val options = mutableListOf<String>()
         options.add("👤 Profil Saya")
+        options.add("👥 Direktori Anggota") // 🆕 BARU!
         options.add("💬 Ucapan & Quotes")
         options.add("📜 Riwayat Pesan")
-        options.add("🔔 Pengaturan Notifikasi") // 🆕 BARU!
+        options.add("🔔 Pengaturan Notifikasi")
 
         // Tambahkan opsi admin jika user adalah admin
         if (UserManager.isAdmin()) {
@@ -140,9 +141,10 @@ class MainActivity : AppCompatActivity() {
             .setItems(options.toTypedArray()) { _, which ->
                 when (options[which]) {
                     "👤 Profil Saya" -> replaceFragment(ProfileFragment())
+                    "👥 Direktori Anggota" -> replaceFragment(MemberDirectoryFragment()) // 🆕 BARU!
                     "💬 Ucapan & Quotes" -> replaceFragment(MoreFragment())
                     "📜 Riwayat Pesan" -> replaceFragment(HistoryFragment())
-                    "🔔 Pengaturan Notifikasi" -> replaceFragment(NotificationSettingsFragment()) // 🆕 BARU!
+                    "🔔 Pengaturan Notifikasi" -> replaceFragment(NotificationSettingsFragment())
                     "👑 Panel Admin" -> replaceFragment(AdminPanelFragment())
                     "❓ Tentang Aplikasi" -> showAboutDialog()
                 }
