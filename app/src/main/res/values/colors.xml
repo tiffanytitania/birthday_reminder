@@ -19,5 +19,6 @@
     <color name="pink_light">#FFFBBF24</color>
     <color name="gradient_start">#FF667EEA</color>
     <color name="gradient_end">#FF764BA2</color>
+    <color name="gray_200">#EEEEEE</color>
 
 </resources>

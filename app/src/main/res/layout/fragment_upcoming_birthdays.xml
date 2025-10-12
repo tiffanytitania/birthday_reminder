@@ -4,20 +4,32 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Today's Birthdays -->
+        <!-- 🖼️ Banner dari Admin Panel -->
+        <ImageView
+            android:id="@+id/imgCommunityBannerTop"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginBottom="16dp"
+            android:scaleType="centerCrop"
+            android:adjustViewBounds="true"
+            android:background="@drawable/banner_placeholder"
+            android:contentDescription="@string/community_banner" />
+
+        <!-- 🎂 Ulang Tahun Hari Ini -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
+            app:cardElevation="6dp"
             android:backgroundTint="@color/white">
 
             <LinearLayout
@@ -26,6 +38,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -40,8 +53,7 @@
                         android:text="🎂 Ulang Tahun Hari Ini"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textColor="@color/text_primary" />
 
                     <TextView
                         android:id="@+id/tvTodayCount"
@@ -50,8 +62,7 @@
                         android:text="0 orang"
                         android:textSize="14sp"
                         android:textColor="@color/accent"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <TextView
@@ -60,23 +71,24 @@
                     android:layout_height="wrap_content"
                     android:text="Tidak ada ulang tahun hari ini"
                     android:textColor="@color/text_secondary"
-                    android:fontFamily="@font/comic_sans"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvToday"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- This Week's Birthdays -->
+        <!-- 📅 Minggu Ini -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
+            app:cardElevation="6dp"
             android:backgroundTint="@color/white">
 
             <LinearLayout
@@ -85,6 +97,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -99,8 +112,7 @@
                         android:text="📅 Minggu Ini"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textColor="@color/text_primary" />
 
                     <TextView
                         android:id="@+id/tvWeekCount"
@@ -109,8 +121,7 @@
                         android:text="0 orang"
                         android:textSize="14sp"
                         android:textColor="@color/accent"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <TextView
@@ -119,22 +130,24 @@
                     android:layout_height="wrap_content"
                     android:text="Tidak ada ulang tahun minggu ini"
                     android:textColor="@color/text_secondary"
-                    android:fontFamily="@font/comic_sans"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
 
+                <!-- RecyclerView tanpa gambar -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvThisWeek"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- This Month's Birthdays -->
+        <!-- 🗓️ Bulan Ini -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
+            app:cardElevation="6dp"
             android:backgroundTint="@color/white">
 
             <LinearLayout
@@ -143,6 +156,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -157,8 +171,7 @@
                         android:text="🗓️ Bulan Ini"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textColor="@color/text_primary" />
 
                     <TextView
                         android:id="@+id/tvMonthCount"
@@ -167,8 +180,7 @@
                         android:text="0 orang"
                         android:textSize="14sp"
                         android:textColor="@color/accent"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/comic_sans"/>
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <TextView
@@ -177,13 +189,14 @@
                     android:layout_height="wrap_content"
                     android:text="Tidak ada ulang tahun bulan ini"
                     android:textColor="@color/text_secondary"
-                    android:fontFamily="@font/comic_sans"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvThisMonth"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

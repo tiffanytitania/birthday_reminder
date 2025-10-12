@@ -1,13 +1,17 @@
 package com.example.birthday_reminder
 
+import android.app.Activity
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.database.*
 import java.util.*
 
@@ -23,6 +27,7 @@ class UpcomingBirthdaysFragment : Fragment() {
     private lateinit var tvEmptyToday: TextView
     private lateinit var tvEmptyWeek: TextView
     private lateinit var tvEmptyMonth: TextView
+    private lateinit var imgBanner: ImageView
 
     private val allBirthdays = mutableListOf<BirthdayItem>()
 
@@ -32,10 +37,13 @@ class UpcomingBirthdaysFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_upcoming_birthdays, container, false)
 
+        // 🔹 Inisialisasi database Firebase
         database = FirebaseDatabase.getInstance(
             "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
+        // 🔹 Inisialisasi View
+        imgBanner = view.findViewById(R.id.imgCommunityBannerTop)
         rvToday = view.findViewById(R.id.rvToday)
         rvThisWeek = view.findViewById(R.id.rvThisWeek)
         rvThisMonth = view.findViewById(R.id.rvThisMonth)
@@ -50,8 +58,52 @@ class UpcomingBirthdaysFragment : Fragment() {
         rvThisWeek.layoutManager = LinearLayoutManager(requireContext())
         rvThisMonth.layoutManager = LinearLayoutManager(requireContext())
 
+        // 🔹 Tampilkan banner komunitas (diset dari AdminPanel)
+        loadLocalBanner()
+
+        // 🔹 Muat data ulang tahun
         loadBirthdays()
+
         return view
+    }
+
+
+    private fun loadCommunityBanner() {
+        val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
+        val localUri = prefs.getString("localBannerUri", null)
+
+        if (localUri != null) {
+            try {
+                Glide.with(requireContext())
+                    .load(Uri.parse(localUri))
+                    .placeholder(R.drawable.banner_placeholder)
+                    .error(R.drawable.banner_placeholder)
+                    .into(imgBanner)
+            } catch (e: Exception) {
+                imgBanner.setImageResource(R.drawable.banner_placeholder)
+            }
+        } else {
+            imgBanner.setImageResource(R.drawable.banner_placeholder)
+        }
+    }
+
+    private fun loadLocalBanner() {
+        val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
+        val localUri = prefs.getString("localBannerUri", null)
+
+        if (localUri != null) {
+            try {
+                Glide.with(requireContext())
+                    .load(Uri.parse(localUri))
+                    .placeholder(R.drawable.banner_placeholder)
+                    .error(R.drawable.banner_placeholder)
+                    .into(imgBanner)
+            } catch (e: Exception) {
+                imgBanner.setImageResource(R.drawable.banner_placeholder)
+            }
+        } else {
+            imgBanner.setImageResource(R.drawable.banner_placeholder)
+        }
     }
 
     private fun loadBirthdays() {
@@ -97,7 +149,7 @@ class UpcomingBirthdaysFragment : Fragment() {
                 todayList.add(birthday)
             }
 
-            // This week (rough calculation)
+            // Calculate next occurrence
             val birthdayCal = Calendar.getInstance().apply {
                 set(Calendar.DAY_OF_MONTH, day)
                 set(Calendar.MONTH, month - 1)
@@ -106,10 +158,12 @@ class UpcomingBirthdaysFragment : Fragment() {
                 }
             }
 
+            // Within this week
             if (birthdayCal.timeInMillis <= weekLater.timeInMillis && birthdayCal >= today) {
                 weekList.add(birthday)
             }
 
+            // Within this month
             if (birthdayCal.timeInMillis <= monthLater.timeInMillis && birthdayCal >= today) {
                 monthList.add(birthday)
             }
@@ -156,7 +210,9 @@ class UpcomingBirthdaysFragment : Fragment() {
             rvThisMonth.adapter = UpcomingAdapter(monthList)
         }
     }
+
 }
+
 
 class UpcomingAdapter(private val items: List<BirthdayItem>) :
     RecyclerView.Adapter<UpcomingAdapter.ViewHolder>() {

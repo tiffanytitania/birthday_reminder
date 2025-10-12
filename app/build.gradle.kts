@@ -60,6 +60,10 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx:20.3.1")
     implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
 
+    // Firebase Storage (buat upload/download gambar, file, dsb)
+    implementation("com.google.firebase:firebase-storage-ktx:20.3.0")
+
+
     // CalendarView
     implementation("com.prolificinteractive:material-calendarview:1.4.3")
 

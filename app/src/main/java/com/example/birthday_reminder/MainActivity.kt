@@ -25,6 +25,7 @@ import com.example.birthday_reminder.messaging.MessageManager
 import com.example.birthday_reminder.worker.BirthdayWorker
 import java.util.concurrent.TimeUnit
 
+
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
