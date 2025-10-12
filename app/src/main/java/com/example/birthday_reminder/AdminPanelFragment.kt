@@ -7,8 +7,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.birthday_reminder.auth.UserManager
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.database.DatabaseReference
@@ -27,7 +25,8 @@ class AdminPanelFragment : Fragment() {
     private lateinit var etCommunityDesc: EditText
     private lateinit var btnSaveCommunity: Button
     private lateinit var btnSendAnnouncement: Button
-    private lateinit var rvMemberManagement: RecyclerView
+    private lateinit var btnUserManagement: Button
+    private lateinit var btnUserSettings: Button // ganti dari btnExportData
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -56,11 +55,10 @@ class AdminPanelFragment : Fragment() {
         etCommunityDesc = view.findViewById(R.id.etCommunityDesc)
         btnSaveCommunity = view.findViewById(R.id.btnSaveCommunity)
         btnSendAnnouncement = view.findViewById(R.id.btnSendAnnouncement)
-        rvMemberManagement = view.findViewById(R.id.rvMemberManagement)
+        btnUserManagement = view.findViewById(R.id.btnUserManagement)
+        btnUserSettings = view.findViewById(R.id.btnUserSettings)
 
         tvAdminWelcome.text = "Selamat datang, Admin ${UserManager.getCurrentUser()}! 👑"
-
-        rvMemberManagement.layoutManager = LinearLayoutManager(requireContext())
     }
 
     private fun setupDatabase() {
@@ -84,12 +82,22 @@ class AdminPanelFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        btnSaveCommunity.setOnClickListener {
-            saveCommunityInfo()
+        btnSaveCommunity.setOnClickListener { saveCommunityInfo() }
+
+        btnSendAnnouncement.setOnClickListener { showAnnouncementDialog() }
+
+        btnUserManagement.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.frame_container, UserManagementFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
-        btnSendAnnouncement.setOnClickListener {
-            showAnnouncementDialog()
+        btnUserSettings.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.frame_container, ExportDataFragment())
+                .addToBackStack(null)
+                .commit()
         }
     }
 
@@ -138,9 +146,7 @@ class AdminPanelFragment : Fragment() {
 
                 dialog.dismiss()
             }
-            .setNegativeButton("Batal") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
             .show()
     }
 
@@ -156,9 +162,6 @@ class AdminPanelFragment : Fragment() {
         database.child("announcements").push().setValue(announcement)
             .addOnSuccessListener {
                 Toast.makeText(requireContext(), "✅ Pengumuman berhasil dikirim!", Toast.LENGTH_SHORT).show()
-
-                // TODO: Kirim notifikasi push ke semua member
-                // Implementasi dengan FCM (Firebase Cloud Messaging)
             }
             .addOnFailureListener { e ->
                 Toast.makeText(requireContext(), "❌ Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -167,8 +170,6 @@ class AdminPanelFragment : Fragment() {
 
     private fun showAccessDenied() {
         Toast.makeText(requireContext(), "⛔ Akses ditolak! Hanya admin yang dapat mengakses halaman ini.", Toast.LENGTH_LONG).show()
-
-        // Kembali ke fragment sebelumnya
         parentFragmentManager.popBackStack()
     }
 }

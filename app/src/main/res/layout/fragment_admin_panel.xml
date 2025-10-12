@@ -138,6 +138,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="4dp">
 
@@ -150,18 +151,73 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="👥 Manajemen Anggota"
+                    android:text="👑 Manajemen User"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
+                    android:layout_marginBottom="8dp"
+                    android:fontFamily="@font/comic_sans" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kelola role dan hapus user"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="12dp"
                     android:fontFamily="@font/comic_sans" />
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvMemberManagement"
+                <Button
+                    android:id="@+id/btnUserManagement"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="100dp" />
+                    android:text="⚙️ Kelola User"
+                    android:backgroundTint="@color/primary"
+                    android:textColor="@color/white"
+                    android:fontFamily="@font/comic_sans" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Export Data Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📊 Ekspor Data"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="8dp"
+                    android:fontFamily="@font/comic_sans" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Export data ke CSV atau Text"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="12dp"
+                    android:fontFamily="@font/comic_sans" />
+
+                <Button
+                    android:id="@+id/btnUserSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📥 Ekspor Data"
+                    android:backgroundTint="@color/success_green"
+                    android:textColor="@color/white"
+                    android:fontFamily="@font/comic_sans" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
