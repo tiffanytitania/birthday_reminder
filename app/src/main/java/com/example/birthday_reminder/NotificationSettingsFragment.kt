@@ -43,11 +43,13 @@ class NotificationSettingsFragment : Fragment() {
         binding.cbThreeDays.isChecked = settings.daysAhead.contains(3)
         binding.cbOneWeek.isChecked = settings.daysAhead.contains(7)
 
-        // Notification time
-        val hour = settings.notificationTime
-        binding.tvNotificationTime.text = String.format("%02d:00", hour)
+        // Notification time (disimpan dalam menit total)
+        val totalMinutes = settings.notificationTime
+        val hour = totalMinutes / 60
+        val minute = totalMinutes % 60
+        binding.tvNotificationTime.text = String.format("%02d:%02d", hour, minute)
 
-        // Enable/disable checkboxes based on master switch
+        // Enable/disable checkboxes
         updateCheckboxesState(settings.enabled)
     }
 
@@ -113,22 +115,27 @@ class NotificationSettingsFragment : Fragment() {
     }
 
     private fun showTimePicker() {
-        val currentHour = NotificationSettingsManager.getSettings().notificationTime
+        val settings = NotificationSettingsManager.getSettings()
+        val currentHour = settings.notificationTime / 60
+        val currentMinute = settings.notificationTime % 60
 
         TimePickerDialog(
             requireContext(),
-            { _, hourOfDay, _ ->
-                NotificationSettingsManager.setNotificationTime(hourOfDay)
-                binding.tvNotificationTime.text = String.format("%02d:00", hourOfDay)
+            { _, hourOfDay, minute ->
+                val totalMinutes = hourOfDay * 60 + minute
+                NotificationSettingsManager.setNotificationTime(totalMinutes)
+
+                // update tampilan ke format jam:menit yang rapi
+                binding.tvNotificationTime.text = String.format("%02d:%02d", hourOfDay, minute)
                 Toast.makeText(
                     requireContext(),
-                    "⏰ Notifikasi akan dikirim jam $hourOfDay:00",
+                    "⏰ Notifikasi akan dikirim jam %02d:%02d".format(hourOfDay, minute),
                     Toast.LENGTH_SHORT
                 ).show()
             },
             currentHour,
-            0,
-            true // 24 hour format
+            currentMinute,
+            true // format 24 jam
         ).show()
     }
 
