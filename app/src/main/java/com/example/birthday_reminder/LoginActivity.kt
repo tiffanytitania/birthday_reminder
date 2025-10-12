@@ -13,10 +13,10 @@ class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🆕 PENTING: Init UserManager dulu sebelum cek login
+        // Inisialisasi UserManager
         UserManager.init(this)
 
-        // Cek apakah sudah login sebelumnya
+        // Auto login kalau sudah pernah login
         if (UserManager.isLoggedIn()) {
             navigateToMain()
             return
@@ -34,8 +34,9 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            // ✅ Login lokal (SharedPreferences)
             if (UserManager.login(username, password)) {
-                Toast.makeText(this, "Login berhasil! Selamat datang $username 🎉", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Login berhasil 🎉", Toast.LENGTH_SHORT).show()
                 navigateToMain()
             } else {
                 Toast.makeText(this, "Username atau password salah!", Toast.LENGTH_SHORT).show()

@@ -3,178 +3,133 @@ package com.example.birthday_reminder.auth
 import android.content.Context
 import android.content.SharedPreferences
 
-/**
- * UserManager dengan persistence dan role management
- * Menggantikan file UserManager.kt yang lama
- */
 object UserManager {
-    private const val PREF_NAME = "birthday_reminder_prefs"
-    private const val KEY_USERNAME = "current_username"
-    private const val KEY_IS_LOGGED_IN = "is_logged_in"
-    private const val KEY_USER_ROLE = "user_role"
+    private const val PREF_NAME = "user_prefs"
 
-    // User roles
-    const val ROLE_ADMIN = "admin"
-    const val ROLE_USER = "user"
+    // Keys untuk session aktif
+    private const val KEY_USERNAME = "current_username"
+    private const val KEY_ROLE = "current_role"
 
     private lateinit var prefs: SharedPreferences
-    private var currentUser: String? = null
-    private var currentRole: String? = null
 
-    // Database pengguna (dalam production, gunakan Firebase/Room)
-    private val registeredUsers = mutableMapOf(
-        "admin" to UserData("admin123", ROLE_ADMIN, "Admin Komunitas", null, null),
-        "user1" to UserData("password1", ROLE_USER, "User Demo", null, null),
-        "demo" to UserData("demo123", ROLE_USER, "Demo User", null, null)
+    data class UserData(
+        val username: String,
+        val fullName: String,
+        val birthDate: String?,
+        val phone: String?,
+        val photoUrl: String?,
+        val role: String
     )
 
-    /**
-     * Inisialisasi SharedPreferences
-     * PANGGIL INI DI Application.onCreate() atau MainActivity.onCreate()
-     */
+    // ========================= INIT ============================
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
-        // Restore session jika ada
-        if (prefs.getBoolean(KEY_IS_LOGGED_IN, false)) {
-            currentUser = prefs.getString(KEY_USERNAME, null)
-            currentRole = prefs.getString(KEY_USER_ROLE, ROLE_USER)
+        // ✅ Buat akun admin default kalau belum ada
+        if (!prefs.contains("admin-password")) {
+            prefs.edit().apply {
+                putString("admin-password", "admin123")
+                putString("admin-role", "admin")
+                putString("admin-fullname", "Administrator")
+                putString("admin-birthDate", null)
+                putString("admin-phone", null)
+                putString("admin-photo", null)
+                apply()
+            }
         }
     }
 
-    /**
-     * Register user baru
-     */
-    fun register(username: String, password: String, fullName: String = username): Boolean {
-        if (username.isBlank() || password.isBlank()) return false
-        if (registeredUsers.containsKey(username)) return false
+    // ========================= REGISTER ============================
+    fun register(username: String, password: String, role: String = "member"): Boolean {
+        if (prefs.contains("$username-password")) return false // username sudah dipakai
 
-        // User baru default sebagai ROLE_USER
-        registeredUsers[username] = UserData(password, ROLE_USER, fullName, null, null)
+        prefs.edit().apply {
+            putString("$username-password", password)
+            putString("$username-role", role)
+            putString("$username-fullname", username)
+            putString("$username-birthDate", null)
+            putString("$username-phone", null)
+            putString("$username-photo", null)
+            apply()
+        }
         return true
     }
 
-    /**
-     * Login user dengan persistence
-     */
+    // ========================= LOGIN ============================
     fun login(username: String, password: String): Boolean {
-        val userData = registeredUsers[username]
+        val storedPassword = prefs.getString("$username-password", null)
+        val storedRole = prefs.getString("$username-role", "member")
 
-        if (userData?.password == password) {
-            currentUser = username
-            currentRole = userData.role
-
-            // Simpan ke SharedPreferences
+        return if (storedPassword == password) {
             prefs.edit().apply {
-                putBoolean(KEY_IS_LOGGED_IN, true)
                 putString(KEY_USERNAME, username)
-                putString(KEY_USER_ROLE, userData.role)
+                putString(KEY_ROLE, storedRole)
                 apply()
             }
-
-            return true
+            true
+        } else {
+            false
         }
-        return false
     }
 
-    /**
-     * Logout user
-     */
-    fun logout() {
-        currentUser = null
-        currentRole = null
+    // ========================= SESSION ============================
+    fun getCurrentUser(): String? = prefs.getString(KEY_USERNAME, null)
+    fun getCurrentRole(): String? = prefs.getString(KEY_ROLE, null)
+    fun isLoggedIn(): Boolean = getCurrentUser() != null
+    fun isAdmin(): Boolean = getCurrentRole() == "admin"
 
+    fun logout() {
         prefs.edit().apply {
-            putBoolean(KEY_IS_LOGGED_IN, false)
             remove(KEY_USERNAME)
-            remove(KEY_USER_ROLE)
+            remove(KEY_ROLE)
             apply()
         }
     }
 
-    /**
-     * Cek apakah user sudah login
-     */
-    fun isLoggedIn(): Boolean = currentUser != null
+    // ========================= PROFILE ============================
+    fun getUserData(username: String? = null): UserData? {
+        val finalUsername = username ?: getCurrentUser() ?: return null
 
-    /**
-     * Get username yang sedang login
-     */
-    fun getCurrentUser(): String? = currentUser
+        val fullName = prefs.getString("$finalUsername-fullname", null) ?: return null
+        val birthDate = prefs.getString("$finalUsername-birthDate", null)
+        val phone = prefs.getString("$finalUsername-phone", null)
+        val photo = prefs.getString("$finalUsername-photo", null)
+        val role = prefs.getString("$finalUsername-role", "member") ?: "member"
 
-    /**
-     * Get role user yang sedang login
-     */
-    fun getCurrentRole(): String? = currentRole
-
-    /**
-     * Cek apakah user adalah admin
-     */
-    fun isAdmin(): Boolean = currentRole == ROLE_ADMIN
-
-    /**
-     * Get user data lengkap
-     */
-    fun getUserData(username: String = currentUser ?: ""): UserData? {
-        return registeredUsers[username]
+        return UserData(finalUsername, fullName, birthDate, phone, photo, role)
     }
 
-    /**
-     * Update profil user
-     */
+
     fun updateProfile(
-        username: String = currentUser ?: "",
-        fullName: String? = null,
-        photoUrl: String? = null,
-        birthDate: String? = null,
-        phone: String? = null
+        fullName: String,
+        birthDate: String?,
+        phone: String?,
+        photoUrl: String?
     ): Boolean {
-        val userData = registeredUsers[username] ?: return false
-
-        registeredUsers[username] = userData.copy(
-            fullName = fullName ?: userData.fullName,
-            photoUrl = photoUrl ?: userData.photoUrl,
-            birthDate = birthDate ?: userData.birthDate,
-            phone = phone ?: userData.phone
-        )
-
+        val username = getCurrentUser() ?: return false
+        prefs.edit().apply {
+            putString("$username-fullname", fullName)
+            putString("$username-birthDate", birthDate)
+            putString("$username-phone", phone)
+            putString("$username-photo", photoUrl)
+            apply()
+        }
         return true
     }
 
-    /**
-     * Promote user menjadi admin (hanya admin yang bisa)
-     */
+    // ========================= ROLE CONTROL (opsional) ============================
     fun promoteToAdmin(username: String): Boolean {
-        if (!isAdmin()) return false
-
-        val userData = registeredUsers[username] ?: return false
-        registeredUsers[username] = userData.copy(role = ROLE_ADMIN)
-
+        val current = getCurrentUser()
+        if (current == null || getCurrentRole() != "admin") return false
+        prefs.edit().putString("$username-role", "admin").apply()
         return true
     }
 
-    /**
-     * Demote admin menjadi user biasa
-     */
-    fun demoteToUser(username: String): Boolean {
-        if (!isAdmin()) return false
-        if (username == currentUser) return false // Tidak bisa demote diri sendiri
-
-        val userData = registeredUsers[username] ?: return false
-        registeredUsers[username] = userData.copy(role = ROLE_USER)
-
+    fun demoteToMember(username: String): Boolean {
+        val current = getCurrentUser()
+        if (current == null || getCurrentRole() != "admin") return false
+        if (username == current) return false // gak bisa demote diri sendiri
+        prefs.edit().putString("$username-role", "member").apply()
         return true
     }
 }
-
-/**
- * Data class untuk menyimpan informasi user
- */
-data class UserData(
-    val password: String,
-    val role: String,
-    val fullName: String,
-    val photoUrl: String? = null,
-    val birthDate: String? = null,
-    val phone: String? = null
-)

@@ -12,10 +12,7 @@ import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.data.model.Member
 import com.example.birthday_reminder.databinding.FragmentUserManagementBinding
 import com.example.birthday_reminder.ui.adapter.UserManagementAdapter
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 
 class UserManagementFragment : Fragment() {
     private var _binding: FragmentUserManagementBinding? = null
@@ -50,12 +47,8 @@ class UserManagementFragment : Fragment() {
     private fun setupRecyclerView() {
         userAdapter = UserManagementAdapter(
             users = allUsers,
-            onEditRoleClick = { user ->
-                showEditRoleDialog(user)
-            },
-            onDeleteClick = { user ->
-                showDeleteConfirmDialog(user)
-            }
+            onEditRoleClick = { user -> showEditRoleDialog(user) },
+            onDeleteClick = { user -> showDeleteConfirmDialog(user) }
         )
 
         binding.rvUsers.apply {
@@ -90,13 +83,10 @@ class UserManagementFragment : Fragment() {
                         birthDate = date,
                         role = role
                     )
-
                     allUsers.add(user)
                 }
 
-                // Sort: Admin dulu, terus by name
                 allUsers.sortWith(compareBy({ it.role != "admin" }, { it.name }))
-
                 userAdapter.notifyDataSetChanged()
                 updateUI()
                 binding.progressBar.visibility = View.GONE
@@ -129,7 +119,6 @@ class UserManagementFragment : Fragment() {
     private fun showEditRoleDialog(user: Member) {
         val currentUser = UserManager.getCurrentUser()
 
-        // Prevent admin from demoting themselves
         if (user.name == currentUser && user.role == "admin") {
             Toast.makeText(requireContext(), "⚠️ Anda tidak bisa mengubah role diri sendiri!", Toast.LENGTH_SHORT).show()
             return
@@ -156,8 +145,7 @@ class UserManagementFragment : Fragment() {
 
         database.child("birthdays").child(user.id).child("role").setValue(newRole)
             .addOnSuccessListener {
-                val roleText = if (newRole == "admin") "Admin" else "Member"
-                Toast.makeText(requireContext(), "✅ ${user.name} sekarang menjadi $roleText", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "✅ ${user.name} sekarang menjadi ${if (newRole == "admin") "Admin" else "Member"}", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(requireContext(), "❌ Gagal update role: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -167,7 +155,6 @@ class UserManagementFragment : Fragment() {
     private fun showDeleteConfirmDialog(user: Member) {
         val currentUser = UserManager.getCurrentUser()
 
-        // Prevent admin from deleting themselves
         if (user.name == currentUser) {
             Toast.makeText(requireContext(), "⚠️ Anda tidak bisa menghapus diri sendiri!", Toast.LENGTH_SHORT).show()
             return
@@ -176,9 +163,7 @@ class UserManagementFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setTitle("Hapus User")
             .setMessage("Apakah Anda yakin ingin menghapus ${user.name}?\n\nData ulang tahun dan semua informasi akan dihapus permanen.")
-            .setPositiveButton("Hapus") { _, _ ->
-                deleteUser(user)
-            }
+            .setPositiveButton("Hapus") { _, _ -> deleteUser(user) }
             .setNegativeButton("Batal", null)
             .show()
     }

@@ -119,8 +119,11 @@ class ProfileFragment : Fragment() {
         val etBirthDate = dialogView.findViewById<TextInputEditText>(R.id.etBirthDate)
         val etPhone = dialogView.findViewById<TextInputEditText>(R.id.etPhone)
 
+        // ✅ Ambil username aktif
+        val username = UserManager.getCurrentUser() ?: return
+        val userData = UserManager.getUserData(username) ?: return
+
         // Pre-fill data
-        val userData = UserManager.getUserData() ?: return
         etFullName.setText(userData.fullName)
         etBirthDate.setText(userData.birthDate ?: "")
         etPhone.setText(userData.phone ?: "")

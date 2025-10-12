@@ -12,7 +12,7 @@ class RegisterActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🆕 CRITICAL: Inisialisasi UserManager dengan context
+        // 🧠 Inisialisasi UserManager
         UserManager.init(this)
 
         binding = ActivityRegisterBinding.inflate(layoutInflater)
@@ -37,20 +37,31 @@ class RegisterActivity : AppCompatActivity() {
                     Toast.makeText(this, "Password tidak cocok!", Toast.LENGTH_SHORT).show()
                 }
                 else -> {
-                    if (UserManager.register(username, password)) {
-                        Toast.makeText(this, "Registrasi berhasil! Silakan login 🎉", Toast.LENGTH_SHORT).show()
-                        finish()
+                    val isRegistered = UserManager.register(username, password)
+                    if (isRegistered) {
+                        Toast.makeText(
+                            this,
+                            "Registrasi berhasil! Silakan login 🎉",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish() // kembali ke login
                     } else {
-                        Toast.makeText(this, "Username sudah digunakan!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this,
+                            "Username sudah digunakan!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
         }
 
+        // 🔸 Tombol untuk kembali ke halaman login
         binding.tvLogin.setOnClickListener {
             finish()
         }
 
+        // 🔸 Tombol back (jika ada)
         binding.btnBack.setOnClickListener {
             finish()
         }

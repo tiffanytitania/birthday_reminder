@@ -36,13 +36,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inisialisasi UserManager dengan context
+        // Inisialisasi UserManager
         UserManager.init(this)
 
         // Inisialisasi MessageManager (untuk fitur messaging)
         MessageManager.init(this)
 
-        // Cek apakah user sudah login (dengan persistence)
+        // Cek login
         if (!UserManager.isLoggedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -63,24 +63,24 @@ class MainActivity : AppCompatActivity() {
             createNotificationChannel()
             requestNotificationPermission()
 
-            // Setup WorkManager untuk notifikasi otomatis
+            // Setup notifikasi otomatis
             setupBirthdayNotifications()
 
             // Default fragment saat aplikasi dibuka
             replaceFragment(HomeFragment())
 
-            // Setup bottom navigation dengan fitur admin
+            // Bottom navigation
             setupBottomNavigation()
 
-            // Logout button
+            // Tombol logout
             binding.btnLogout.setOnClickListener {
                 showLogoutDialog()
             }
 
-            // Update welcome text dengan role
+            // Update welcome text
             updateWelcomeText()
 
-            // Show admin badge jika user adalah admin
+            // Tampilkan badge admin jika role admin
             if (UserManager.isAdmin()) {
                 binding.tvAdminBadge.visibility = View.VISIBLE
             } else {
@@ -105,13 +105,19 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_add -> {
-                    replaceFragment(AddBirthdayFragment())
+                    // 🆕 Batasi user biasa tidak boleh menambah data
+                    if (UserManager.isAdmin()) {
+                        replaceFragment(AddBirthdayFragment())
+                    } else {
+                        showAccessDeniedDialog()
+                    }
                     true
                 }
                 R.id.nav_statistics -> {
                     replaceFragment(StatisticsFragment())
                     true
                 }
+
                 R.id.nav_more -> {
                     showMoreMenu()
                     true
@@ -124,12 +130,12 @@ class MainActivity : AppCompatActivity() {
     private fun showMoreMenu() {
         val options = mutableListOf<String>()
         options.add("👤 Profil Saya")
-        options.add("👥 Direktori Anggota") // 🆕 BARU!
+        options.add("👥 Direktori Anggota")
         options.add("💬 Ucapan & Quotes")
         options.add("📜 Riwayat Pesan")
         options.add("🔔 Pengaturan Notifikasi")
 
-        // Tambahkan opsi admin jika user adalah admin
+        // 🆕 Tambahkan Panel Admin hanya jika role admin
         if (UserManager.isAdmin()) {
             options.add("👑 Panel Admin")
         }
@@ -141,11 +147,17 @@ class MainActivity : AppCompatActivity() {
             .setItems(options.toTypedArray()) { _, which ->
                 when (options[which]) {
                     "👤 Profil Saya" -> replaceFragment(ProfileFragment())
-                    "👥 Direktori Anggota" -> replaceFragment(MemberDirectoryFragment()) // 🆕 BARU!
+                    "👥 Direktori Anggota" -> replaceFragment(MemberDirectoryFragment())
                     "💬 Ucapan & Quotes" -> replaceFragment(MoreFragment())
                     "📜 Riwayat Pesan" -> replaceFragment(HistoryFragment())
                     "🔔 Pengaturan Notifikasi" -> replaceFragment(NotificationSettingsFragment())
-                    "👑 Panel Admin" -> replaceFragment(AdminPanelFragment())
+                    "👑 Panel Admin" -> {
+                        if (UserManager.isAdmin()) {
+                            replaceFragment(AdminPanelFragment())
+                        } else {
+                            showAccessDeniedDialog()
+                        }
+                    }
                     "❓ Tentang Aplikasi" -> showAboutDialog()
                 }
             }
@@ -165,7 +177,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("""
                 Birthday Reminder
                 Versi 2.0
-                
+
                 Aplikasi pengingat ulang tahun untuk komunitas dengan fitur:
                 • Kalender ulang tahun
                 • Notifikasi otomatis
@@ -214,7 +226,6 @@ class MainActivity : AppCompatActivity() {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
         }
-
         return calendar.timeInMillis - currentTime
     }
 
@@ -251,7 +262,6 @@ class MainActivity : AppCompatActivity() {
             ).apply {
                 description = "Channel untuk ucapan ulang tahun"
             }
-
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
         }
@@ -271,5 +281,14 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    // 🆕 Tambahan fungsi umum
+    private fun showAccessDeniedDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Akses Ditolak")
+            .setMessage("Fitur ini hanya dapat digunakan oleh Admin 👑")
+            .setPositiveButton("OK", null)
+            .show()
     }
 }
