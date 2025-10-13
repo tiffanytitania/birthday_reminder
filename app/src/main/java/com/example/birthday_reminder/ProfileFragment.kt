@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,11 +17,9 @@ import com.example.birthday_reminder.auth.UserManager
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
 import java.util.*
+import java.io.File
 
-/**
- * Fragment untuk menampilkan dan mengedit profil pengguna
- * Tambahkan fragment ini ke MoreFragment atau buat menu baru
- */
+
 class ProfileFragment : Fragment() {
 
     private lateinit var ivProfilePhoto: ImageView
@@ -35,7 +34,7 @@ class ProfileFragment : Fragment() {
 
     private var selectedImageUri: Uri? = null
 
-    // Image picker launcher
+    // Image picker launcher (galeri)
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -44,6 +43,22 @@ class ProfileFragment : Fragment() {
             loadProfilePhoto(it.toString())
         }
     }
+
+    // Camera launcher
+    private var photoUri: Uri? = null
+
+    // Camera launcher pakai TakePicture
+    private val cameraLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && photoUri != null) {
+            selectedImageUri = photoUri
+            loadProfilePhoto(photoUri.toString())
+        } else {
+            Toast.makeText(requireContext(), "Gagal mengambil foto", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -108,10 +123,54 @@ class ProfileFragment : Fragment() {
         }
 
         btnChangePhoto.setOnClickListener {
-            imagePickerLauncher.launch("image/*")
+            showPhotoOptionsDialog()
         }
     }
 
+    /** ---------------------- POPUP FOTO PROFIL ---------------------- **/
+    private fun showPhotoOptionsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_photo_options, null)
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .create()
+
+        val btnCamera = dialogView.findViewById<Button>(R.id.btnCamera)
+        val btnGallery = dialogView.findViewById<Button>(R.id.btnGallery)
+        val btnRemove = dialogView.findViewById<Button>(R.id.btnRemove)
+        val btnClose = dialogView.findViewById<ImageButton>(R.id.btnClose)
+
+        btnCamera.setOnClickListener {
+            val photoFile = File(requireContext().cacheDir, "profile_photo_${System.currentTimeMillis()}.jpg")
+            photoUri = androidx.core.content.FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                photoFile
+            )
+            cameraLauncher.launch(photoUri)
+            dialog.dismiss()
+        }
+
+
+        btnGallery.setOnClickListener {
+            imagePickerLauncher.launch("image/*")
+            dialog.dismiss()
+        }
+
+        btnRemove.setOnClickListener {
+            ivProfilePhoto.setImageResource(R.drawable.ic_person)
+            selectedImageUri = null
+            Toast.makeText(requireContext(), "Foto profil dihapus", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+
+        btnClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    /** ---------------------- EDIT PROFIL ---------------------- **/
     private fun showEditProfileDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_profile, null)
 
@@ -119,7 +178,6 @@ class ProfileFragment : Fragment() {
         val etBirthDate = dialogView.findViewById<TextInputEditText>(R.id.etBirthDate)
         val etPhone = dialogView.findViewById<TextInputEditText>(R.id.etPhone)
 
-        // ✅ Ambil username aktif
         val username = UserManager.getCurrentUser() ?: return
         val userData = UserManager.getUserData(username) ?: return
 
@@ -128,11 +186,8 @@ class ProfileFragment : Fragment() {
         etBirthDate.setText(userData.birthDate ?: "")
         etPhone.setText(userData.phone ?: "")
 
-        // Date picker untuk tanggal lahir
         etBirthDate.setOnClickListener {
-            showDatePicker { date ->
-                etBirthDate.setText(date)
-            }
+            showDatePicker { date -> etBirthDate.setText(date) }
         }
 
         AlertDialog.Builder(requireContext())
@@ -169,6 +224,7 @@ class ProfileFragment : Fragment() {
             .show()
     }
 
+    /** ---------------------- PICKER TANGGAL ---------------------- **/
     private fun showDatePicker(onDateSelected: (String) -> Unit) {
         val calendar = Calendar.getInstance()
         val year = calendar.get(Calendar.YEAR)
@@ -178,5 +234,20 @@ class ProfileFragment : Fragment() {
         DatePickerDialog(requireContext(), { _, y, m, d ->
             onDateSelected("$d/${m + 1}/$y")
         }, year, month, day).show()
+    }
+
+    /** ---------------------- SIMPAN BITMAP SEMENTARA ---------------------- **/
+    private fun saveBitmapToCache(bitmap: android.graphics.Bitmap): Uri? {
+        val cachePath = File(requireContext().cacheDir, "images")
+        cachePath.mkdirs()
+        val file = File(cachePath, "profile_photo.png")
+        val stream = java.io.FileOutputStream(file)
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+        stream.close()
+        return androidx.core.content.FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.fileprovider",
+            file
+        )
     }
 }
