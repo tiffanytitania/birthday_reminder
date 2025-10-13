@@ -12,13 +12,16 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.example.birthday_reminder.auth.UserManager
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
-import java.util.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-
+import java.util.*
 
 class ProfileFragment : Fragment() {
 
@@ -33,8 +36,9 @@ class ProfileFragment : Fragment() {
     private lateinit var cardRoleInfo: MaterialCardView
 
     private var selectedImageUri: Uri? = null
+    private var photoUri: Uri? = null
 
-    // Image picker launcher (galeri)
+    // Gallery picker
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -45,9 +49,6 @@ class ProfileFragment : Fragment() {
     }
 
     // Camera launcher
-    private var photoUri: Uri? = null
-
-    // Camera launcher pakai TakePicture
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
@@ -58,7 +59,6 @@ class ProfileFragment : Fragment() {
             Toast.makeText(requireContext(), "Gagal mengambil foto", Toast.LENGTH_SHORT).show()
         }
     }
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -89,13 +89,11 @@ class ProfileFragment : Fragment() {
         val username = UserManager.getCurrentUser() ?: return
         val userData = UserManager.getUserData(username) ?: return
 
-        // Set data ke UI
         tvUsername.text = "@$username"
         tvFullName.text = userData.fullName
         tvBirthDate.text = userData.birthDate ?: "Belum diatur"
         tvPhone.text = userData.phone ?: "Belum diatur"
 
-        // Set role dengan styling
         val isAdmin = UserManager.isAdmin()
         tvRole.text = if (isAdmin) "👑 Admin" else "👤 Anggota"
         cardRoleInfo.setCardBackgroundColor(
@@ -105,7 +103,6 @@ class ProfileFragment : Fragment() {
                 resources.getColor(R.color.primary, null)
         )
 
-        // Load foto profil
         userData.photoUrl?.let { loadProfilePhoto(it) }
     }
 
@@ -118,13 +115,8 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        btnEditProfile.setOnClickListener {
-            showEditProfileDialog()
-        }
-
-        btnChangePhoto.setOnClickListener {
-            showPhotoOptionsDialog()
-        }
+        btnEditProfile.setOnClickListener { showEditProfileDialog() }
+        btnChangePhoto.setOnClickListener { showPhotoOptionsDialog() }
     }
 
     /** ---------------------- POPUP FOTO PROFIL ---------------------- **/
@@ -139,17 +131,22 @@ class ProfileFragment : Fragment() {
         val btnRemove = dialogView.findViewById<Button>(R.id.btnRemove)
         val btnClose = dialogView.findViewById<ImageButton>(R.id.btnClose)
 
+        // Camera button (non-blocking)
         btnCamera.setOnClickListener {
-            val photoFile = File(requireContext().cacheDir, "profile_photo_${System.currentTimeMillis()}.jpg")
-            photoUri = androidx.core.content.FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
-                photoFile
-            )
-            cameraLauncher.launch(photoUri)
             dialog.dismiss()
+            lifecycleScope.launch(Dispatchers.IO) {
+                val photoFile = File(requireContext().cacheDir, "profile_photo_${System.currentTimeMillis()}.jpg")
+                photoFile.createNewFile()
+                photoUri = androidx.core.content.FileProvider.getUriForFile(
+                    requireContext(),
+                    "${requireContext().packageName}.fileprovider",
+                    photoFile
+                )
+                withContext(Dispatchers.Main) {
+                    cameraLauncher.launch(photoUri)
+                }
+            }
         }
-
 
         btnGallery.setOnClickListener {
             imagePickerLauncher.launch("image/*")
@@ -163,9 +160,7 @@ class ProfileFragment : Fragment() {
             dialog.dismiss()
         }
 
-        btnClose.setOnClickListener {
-            dialog.dismiss()
-        }
+        btnClose.setOnClickListener { dialog.dismiss() }
 
         dialog.show()
     }
@@ -181,7 +176,6 @@ class ProfileFragment : Fragment() {
         val username = UserManager.getCurrentUser() ?: return
         val userData = UserManager.getUserData(username) ?: return
 
-        // Pre-fill data
         etFullName.setText(userData.fullName)
         etBirthDate.setText(userData.birthDate ?: "")
         etPhone.setText(userData.phone ?: "")
@@ -218,9 +212,7 @@ class ProfileFragment : Fragment() {
 
                 dialog.dismiss()
             }
-            .setNegativeButton("Batal") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
             .show()
     }
 
@@ -236,7 +228,6 @@ class ProfileFragment : Fragment() {
         }, year, month, day).show()
     }
 
-    /** ---------------------- SIMPAN BITMAP SEMENTARA ---------------------- **/
     private fun saveBitmapToCache(bitmap: android.graphics.Bitmap): Uri? {
         val cachePath = File(requireContext().cacheDir, "images")
         cachePath.mkdirs()
