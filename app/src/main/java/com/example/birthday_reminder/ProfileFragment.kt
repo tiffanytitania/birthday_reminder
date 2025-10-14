@@ -3,6 +3,7 @@ package com.example.birthday_reminder
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -11,6 +12,8 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -37,6 +40,22 @@ class ProfileFragment : Fragment() {
 
     private var selectedImageUri: Uri? = null
     private var photoUri: Uri? = null
+
+    // Request permissions
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            openCamera()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Izin kamera diperlukan untuk mengambil foto",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     // Gallery picker
     private val imagePickerLauncher = registerForActivityResult(
@@ -131,21 +150,10 @@ class ProfileFragment : Fragment() {
         val btnRemove = dialogView.findViewById<Button>(R.id.btnRemove)
         val btnClose = dialogView.findViewById<ImageButton>(R.id.btnClose)
 
-        // Camera button (non-blocking)
+        // Camera button
         btnCamera.setOnClickListener {
             dialog.dismiss()
-            lifecycleScope.launch(Dispatchers.IO) {
-                val photoFile = File(requireContext().cacheDir, "profile_photo_${System.currentTimeMillis()}.jpg")
-                photoFile.createNewFile()
-                photoUri = androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    "${requireContext().packageName}.fileprovider",
-                    photoFile
-                )
-                withContext(Dispatchers.Main) {
-                    cameraLauncher.launch(photoUri)
-                }
-            }
+            checkAndRequestCameraPermission()
         }
 
         btnGallery.setOnClickListener {
@@ -163,6 +171,63 @@ class ProfileFragment : Fragment() {
         btnClose.setOnClickListener { dialog.dismiss() }
 
         dialog.show()
+    }
+
+    /** ---------------------- CHECK & REQUEST CAMERA PERMISSION ---------------------- **/
+    private fun checkAndRequestCameraPermission() {
+        val permissionsNeeded = mutableListOf<String>()
+
+        // Check CAMERA permission
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                android.Manifest.permission.CAMERA
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(android.Manifest.permission.CAMERA)
+        }
+
+        // For Android 13+, check READ_MEDIA_IMAGES instead of READ_EXTERNAL_STORAGE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    android.Manifest.permission.READ_MEDIA_IMAGES
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsNeeded.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsNeeded.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissionsNeeded.toTypedArray())
+        } else {
+            openCamera()
+        }
+    }
+
+    /** ---------------------- OPEN CAMERA ---------------------- **/
+    private fun openCamera() {
+        try {
+            val photoFile = File(
+                requireContext().getExternalFilesDir(null),
+                "profile_photo_${System.currentTimeMillis()}.jpg"
+            )
+            photoUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                photoFile
+            )
+            cameraLauncher.launch(photoUri)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** ---------------------- EDIT PROFIL ---------------------- **/
@@ -201,13 +266,25 @@ class ProfileFragment : Fragment() {
                     )
 
                     if (success) {
-                        Toast.makeText(requireContext(), "Profil berhasil diupdate!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Profil berhasil diupdate!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         loadUserProfile()
                     } else {
-                        Toast.makeText(requireContext(), "Gagal update profil", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Gagal update profil",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
-                    Toast.makeText(requireContext(), "Nama lengkap tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Nama lengkap tidak boleh kosong",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 dialog.dismiss()
@@ -235,7 +312,7 @@ class ProfileFragment : Fragment() {
         val stream = java.io.FileOutputStream(file)
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
         stream.close()
-        return androidx.core.content.FileProvider.getUriForFile(
+        return FileProvider.getUriForFile(
             requireContext(),
             "${requireContext().packageName}.fileprovider",
             file
