@@ -8,7 +8,9 @@
     android:orientation="vertical"
     tools:context=".AddBirthdayFragment">
 
-    <!-- 🔍 SEARCH BAR (BARU) -->
+    <!-- ❌ HAPUS TextView yang ada di sini jika ada -->
+
+    <!-- 🔍 SEARCH BAR -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,7 +33,7 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
         android:layout_weight="1"
         android:padding="8dp"
         android:clipToPadding="false" />
@@ -40,7 +42,8 @@
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_gravity="center"
         android:orientation="vertical"
         android:gravity="center"
@@ -72,7 +75,7 @@
             android:layout_marginTop="8dp"/>
     </LinearLayout>
 
-    <!-- Floating Action Button -->
+    <!-- Floating Action Button (hanya muncul untuk admin) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"

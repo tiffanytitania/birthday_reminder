@@ -13,6 +13,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.databinding.FragmentAddBirthdayBinding
 import com.google.firebase.database.*
 import java.util.*
@@ -43,11 +44,9 @@ class AddBirthdayFragment : Fragment() {
 
             setupRecyclerView()
             setupSearch()
+            setupFAB() // 🆕 Setup FAB dengan check admin
             loadBirthdays()
 
-            binding.fabAdd.setOnClickListener {
-                showAddBirthdayDialog()
-            }
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -55,16 +54,45 @@ class AddBirthdayFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = BirthdayAdapter(filteredList,
+        // 🆕 Cek apakah user adalah admin
+        val isAdmin = UserManager.isAdmin()
+
+        adapter = BirthdayAdapter(
+            items = filteredList,
+            isAdmin = isAdmin, // 🆕 Pass status admin
             onDeleteClick = { birthdayItem ->
-                showDeleteConfirmation(birthdayItem)
+                if (isAdmin) {
+                    showDeleteConfirmation(birthdayItem)
+                } else {
+                    Toast.makeText(requireContext(), "⛔ Hanya admin yang bisa menghapus", Toast.LENGTH_SHORT).show()
+                }
             },
-            onEditClick = { birthdayItem ->  // 🆕 EDIT CALLBACK
-                showEditBirthdayDialog(birthdayItem)
+            onEditClick = { birthdayItem ->
+                if (isAdmin) {
+                    showEditBirthdayDialog(birthdayItem)
+                } else {
+                    Toast.makeText(requireContext(), "⛔ Hanya admin yang bisa mengedit", Toast.LENGTH_SHORT).show()
+                }
             }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
+    }
+
+    // 🆕 Setup FAB dengan check admin
+    private fun setupFAB() {
+        val isAdmin = UserManager.isAdmin()
+
+        if (isAdmin) {
+            // Admin: Tampilkan FAB
+            binding.fabAdd.visibility = View.VISIBLE
+            binding.fabAdd.setOnClickListener {
+                showAddBirthdayDialog()
+            }
+        } else {
+            // Member: Sembunyikan FAB
+            binding.fabAdd.visibility = View.GONE
+        }
     }
 
     private fun setupSearch() {
@@ -200,7 +228,6 @@ class AddBirthdayFragment : Fragment() {
         }
     }
 
-    // 🆕 FITUR BARU: EDIT DIALOG
     private fun showEditBirthdayDialog(birthdayItem: BirthdayItem) {
         if (!isAdded || context == null) return
 
@@ -270,14 +297,14 @@ class AddBirthdayFragment : Fragment() {
                 .addOnSuccessListener {
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "✅ Berhasil ditambahkan", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
                 .addOnFailureListener { e ->
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "❌ Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -287,7 +314,6 @@ class AddBirthdayFragment : Fragment() {
         }
     }
 
-    // 🆕 FITUR BARU: UPDATE LOGIC
     private fun updateBirthday(key: String, name: String, date: String) {
         try {
             val updates = mapOf(
@@ -299,14 +325,14 @@ class AddBirthdayFragment : Fragment() {
                 .addOnSuccessListener {
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Berhasil diupdate", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "✅ Berhasil diupdate", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
                 .addOnFailureListener { e ->
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "❌ Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -343,14 +369,14 @@ class AddBirthdayFragment : Fragment() {
                 .addOnSuccessListener {
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "✅ Berhasil dihapus", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
                 .addOnFailureListener { e ->
                     activity?.runOnUiThread {
                         if (isAdded && context != null) {
-                            Toast.makeText(requireContext(), "Gagal menghapus: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(requireContext(), "❌ Gagal menghapus: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -375,17 +401,19 @@ data class BirthdayItem(
     val date: String
 )
 
+// 🆕 ADAPTER dengan support isAdmin
 class BirthdayAdapter(
     private val items: MutableList<BirthdayItem>,
+    private val isAdmin: Boolean, // 🆕 Tambah parameter ini
     private val onDeleteClick: (BirthdayItem) -> Unit,
-    private val onEditClick: (BirthdayItem) -> Unit  // 🆕 EDIT CALLBACK
+    private val onEditClick: (BirthdayItem) -> Unit
 ) : RecyclerView.Adapter<BirthdayAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvName: TextView = view.findViewById(R.id.tvName)
         val tvDate: TextView = view.findViewById(R.id.tvDate)
         val btnDelete: ImageButton = view.findViewById(R.id.btnDelete)
-        val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)  // 🆕 EDIT BUTTON
+        val btnEdit: ImageButton = view.findViewById(R.id.btnEdit)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -399,12 +427,23 @@ class BirthdayAdapter(
         holder.tvName.text = item.name
         holder.tvDate.text = item.date
 
-        holder.btnEdit.setOnClickListener {
-            onEditClick(item)
-        }
+        // 🆕 Show/Hide buttons berdasarkan role
+        if (isAdmin) {
+            // Admin: Tampilkan tombol edit & delete
+            holder.btnEdit.visibility = View.VISIBLE
+            holder.btnDelete.visibility = View.VISIBLE
 
-        holder.btnDelete.setOnClickListener {
-            onDeleteClick(item)
+            holder.btnEdit.setOnClickListener {
+                onEditClick(item)
+            }
+
+            holder.btnDelete.setOnClickListener {
+                onDeleteClick(item)
+            }
+        } else {
+            // Member: Sembunyikan tombol edit & delete
+            holder.btnEdit.visibility = View.GONE
+            holder.btnDelete.visibility = View.GONE
         }
     }
 
