@@ -62,12 +62,8 @@ class MainActivity : AppCompatActivity() {
             // Buat Notification Channel
             createNotificationChannel()
 
-            // 🆕 FORCE REQUEST PERMISSION NOTIFIKASI
+            // Request permission notifikasi
             requestNotificationPermission()
-
-            // 🆕 FORCE RESCHEDULE (untuk testing - uncomment jika notifikasi tidak muncul)
-            // WorkManager.getInstance(this).cancelAllWork()
-            // Log.d("MainActivity", "❌ All work cancelled - will reschedule")
 
             // Setup WorkManager untuk notifikasi otomatis
             setupBirthdayNotifications()
@@ -93,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                 binding.tvAdminBadge.visibility = View.GONE
             }
 
-            // 🆕 Monitor WorkManager status (untuk debugging)
+            // Monitor WorkManager status (untuk debugging)
             monitorWorkManagerStatus()
 
         } catch (e: Exception) {
@@ -173,11 +169,11 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Tentang Aplikasi")
             .setMessage("""
                 Birthday Reminder
-                Versi 2.0
+                Versi 2.1
                 
                 Aplikasi pengingat ulang tahun untuk komunitas dengan fitur:
                 • Kalender ulang tahun
-                • Notifikasi otomatis
+                • Notifikasi otomatis (dengan pengaturan menit presisi)
                 • Statistik komunitas
                 • Ucapan & quotes
                 • Panel admin
@@ -205,15 +201,17 @@ class MainActivity : AppCompatActivity() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "birthday_notification_work",
-            ExistingPeriodicWorkPolicy.UPDATE, // UPDATE untuk selalu pakai schedule terbaru
+            ExistingPeriodicWorkPolicy.REPLACE, // REPLACE agar selalu pakai schedule terbaru
             dailyWorkRequest
         )
 
+        val settings = NotificationSettingsManager.getSettings()
         Log.d("MainActivity", "✅ WorkManager setup complete")
+        Log.d("MainActivity", "⏰ Notification time: ${settings.getFormattedTime()}")
     }
 
     private fun calculateInitialDelay(): Long {
-        // Ambil settings dari user
+        // Ambil settings dari user (sekarang support menit!)
         val settings = NotificationSettingsManager.getSettings()
         val notificationHour = settings.getHour()
         val notificationMinute = settings.getMinute()
@@ -223,7 +221,9 @@ class MainActivity : AppCompatActivity() {
             set(java.util.Calendar.HOUR_OF_DAY, notificationHour)
             set(java.util.Calendar.MINUTE, notificationMinute)
             set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
 
+            // Jika waktu sudah lewat hari ini, jadwalkan untuk besok
             if (timeInMillis <= currentTime) {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
@@ -232,7 +232,7 @@ class MainActivity : AppCompatActivity() {
         val delay = calendar.timeInMillis - currentTime
         val delayMinutes = delay / 1000 / 60
 
-        Log.d("MainActivity", "📅 Next notification scheduled at: $notificationHour:${String.format("%02d", notificationMinute)}")
+        Log.d("MainActivity", "📅 Next notification scheduled at: ${settings.getFormattedTime()}")
         Log.d("MainActivity", "⏰ Delay: $delayMinutes minutes from now")
 
         return delay

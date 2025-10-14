@@ -6,6 +6,7 @@ import com.example.birthday_reminder.data.model.NotificationSettings
 
 /**
  * Manager untuk handle Notification Settings
+ * Sekarang support pengaturan menit (misal: 7:19, 14:30, dll)
  */
 object NotificationSettingsManager {
     private const val PREF_NAME = "notification_settings"
@@ -68,14 +69,26 @@ object NotificationSettingsManager {
 
     /**
      * Update jam notifikasi (dalam menit total, 0-1439)
-     * Contoh: 08:00 = 480 menit, 14:30 = 870 menit
+     * Contoh: 07:19 = 439 menit, 08:00 = 480 menit, 14:30 = 870 menit
      */
     fun setNotificationTime(totalMinutes: Int) {
-        prefs.edit().putInt(KEY_NOTIFICATION_TIME, totalMinutes).apply()
+        // Validasi range (0-1439 menit = 00:00 - 23:59)
+        val validMinutes = totalMinutes.coerceIn(0, 1439)
+        prefs.edit().putInt(KEY_NOTIFICATION_TIME, validMinutes).apply()
+
+        android.util.Log.d("NotificationSettings", "⏰ Notification time set to: ${validMinutes / 60}:${String.format("%02d", validMinutes % 60)}")
     }
 
     /**
-     * Get notification hour (untuk backward compatibility)
+     * Set notification time dari hour dan minute terpisah
+     */
+    fun setNotificationTime(hour: Int, minute: Int) {
+        val totalMinutes = (hour * 60) + minute
+        setNotificationTime(totalMinutes)
+    }
+
+    /**
+     * Get notification hour
      */
     fun getNotificationHour(): Int {
         val totalMinutes = prefs.getInt(KEY_NOTIFICATION_TIME, 480)
@@ -88,5 +101,14 @@ object NotificationSettingsManager {
     fun getNotificationMinute(): Int {
         val totalMinutes = prefs.getInt(KEY_NOTIFICATION_TIME, 480)
         return totalMinutes % 60
+    }
+
+    /**
+     * Get formatted time string (HH:mm)
+     */
+    fun getFormattedTime(): String {
+        val hour = getNotificationHour()
+        val minute = getNotificationMinute()
+        return String.format("%02d:%02d", hour, minute)
     }
 }
