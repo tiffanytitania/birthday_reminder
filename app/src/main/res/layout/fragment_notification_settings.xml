@@ -200,7 +200,15 @@
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
+        <Button
+            android:id="@+id/btnTestNotification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🧪 Test Notifikasi Sekarang"
+            android:textSize="14sp"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:fontFamily="@font/comic_sans"
+            android:layout_marginBottom="16dp"/>
         <!-- Save Button -->
         <Button
             android:id="@+id/btnSave"

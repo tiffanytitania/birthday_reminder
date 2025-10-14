@@ -19,10 +19,14 @@ class BirthdayWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        android.util.Log.d("BirthdayWorker", "🔔 Worker started at ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+
         return try {
             checkBirthdays()
+            android.util.Log.d("BirthdayWorker", "✅ Worker completed successfully")
             Result.success()
         } catch (e: Exception) {
+            android.util.Log.e("BirthdayWorker", "❌ Worker failed: ${e.message}", e)
             e.printStackTrace()
             Result.failure()
         }

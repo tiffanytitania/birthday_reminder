@@ -11,7 +11,7 @@ object NotificationSettingsManager {
     private const val PREF_NAME = "notification_settings"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_DAYS_AHEAD = "days_ahead"
-    private const val KEY_NOTIFICATION_TIME = "notification_time"
+    private const val KEY_NOTIFICATION_TIME = "notification_time" // dalam menit total (0-1439)
 
     private lateinit var prefs: SharedPreferences
 
@@ -26,7 +26,9 @@ object NotificationSettingsManager {
         val enabled = prefs.getBoolean(KEY_ENABLED, true)
         val daysAheadString = prefs.getStringSet(KEY_DAYS_AHEAD, setOf("0", "1", "3")) ?: setOf("0", "1", "3")
         val daysAhead = daysAheadString.map { it.toInt() }.sorted()
-        val notificationTime = prefs.getInt(KEY_NOTIFICATION_TIME, 8)
+
+        // Default: 8:00 AM = 8 * 60 = 480 menit
+        val notificationTime = prefs.getInt(KEY_NOTIFICATION_TIME, 480)
 
         return NotificationSettings(enabled, daysAhead, notificationTime)
     }
@@ -65,9 +67,26 @@ object NotificationSettingsManager {
     }
 
     /**
-     * Update jam notifikasi
+     * Update jam notifikasi (dalam menit total, 0-1439)
+     * Contoh: 08:00 = 480 menit, 14:30 = 870 menit
      */
-    fun setNotificationTime(hour: Int) {
-        prefs.edit().putInt(KEY_NOTIFICATION_TIME, hour).apply()
+    fun setNotificationTime(totalMinutes: Int) {
+        prefs.edit().putInt(KEY_NOTIFICATION_TIME, totalMinutes).apply()
+    }
+
+    /**
+     * Get notification hour (untuk backward compatibility)
+     */
+    fun getNotificationHour(): Int {
+        val totalMinutes = prefs.getInt(KEY_NOTIFICATION_TIME, 480)
+        return totalMinutes / 60
+    }
+
+    /**
+     * Get notification minute
+     */
+    fun getNotificationMinute(): Int {
+        val totalMinutes = prefs.getInt(KEY_NOTIFICATION_TIME, 480)
+        return totalMinutes % 60
     }
 }

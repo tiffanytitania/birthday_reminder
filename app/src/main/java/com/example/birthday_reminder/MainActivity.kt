@@ -14,17 +14,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
+import androidx.work.*
 import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.databinding.ActivityMainBinding
 import com.example.birthday_reminder.messaging.MessageManager
+import com.example.birthday_reminder.settings.NotificationSettingsManager
 import com.example.birthday_reminder.worker.BirthdayWorker
 import java.util.concurrent.TimeUnit
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -37,13 +33,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inisialisasi UserManager
+        // Inisialisasi UserManager dengan context
         UserManager.init(this)
 
         // Inisialisasi MessageManager (untuk fitur messaging)
         MessageManager.init(this)
 
-        // Cek login
+        // Inisialisasi NotificationSettingsManager
+        NotificationSettingsManager.init(this)
+
+        // Cek apakah user sudah login (dengan persistence)
         if (!UserManager.isLoggedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -62,31 +61,40 @@ class MainActivity : AppCompatActivity() {
 
             // Buat Notification Channel
             createNotificationChannel()
+
+            // 🆕 FORCE REQUEST PERMISSION NOTIFIKASI
             requestNotificationPermission()
 
-            // Setup notifikasi otomatis
+            // 🆕 FORCE RESCHEDULE (untuk testing - uncomment jika notifikasi tidak muncul)
+            // WorkManager.getInstance(this).cancelAllWork()
+            // Log.d("MainActivity", "❌ All work cancelled - will reschedule")
+
+            // Setup WorkManager untuk notifikasi otomatis
             setupBirthdayNotifications()
 
             // Default fragment saat aplikasi dibuka
             replaceFragment(HomeFragment())
 
-            // Bottom navigation
+            // Setup bottom navigation dengan fitur admin
             setupBottomNavigation()
 
-            // Tombol logout
+            // Logout button
             binding.btnLogout.setOnClickListener {
                 showLogoutDialog()
             }
 
-            // Update welcome text
+            // Update welcome text dengan role
             updateWelcomeText()
 
-            // Tampilkan badge admin jika role admin
+            // Show admin badge jika user adalah admin
             if (UserManager.isAdmin()) {
                 binding.tvAdminBadge.visibility = View.VISIBLE
             } else {
                 binding.tvAdminBadge.visibility = View.GONE
             }
+
+            // 🆕 Monitor WorkManager status (untuk debugging)
+            monitorWorkManagerStatus()
 
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in onCreate", e)
@@ -106,19 +114,13 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_add -> {
-                    // 🆕 Batasi user biasa tidak boleh menambah data
-                    if (UserManager.isAdmin()) {
-                        replaceFragment(AddBirthdayFragment())
-                    } else {
-                        showAccessDeniedDialog()
-                    }
+                    replaceFragment(AddBirthdayFragment())
                     true
                 }
                 R.id.nav_statistics -> {
                     replaceFragment(StatisticsFragment())
                     true
                 }
-
                 R.id.nav_more -> {
                     showMoreMenu()
                     true
@@ -136,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         options.add("📜 Riwayat Pesan")
         options.add("🔔 Pengaturan Notifikasi")
 
-        // 🆕 Tambahkan Panel Admin hanya jika role admin
+        // Tambahkan opsi admin jika user adalah admin
         if (UserManager.isAdmin()) {
             options.add("👑 Panel Admin")
         }
@@ -152,13 +154,7 @@ class MainActivity : AppCompatActivity() {
                     "💬 Ucapan & Quotes" -> replaceFragment(MoreFragment())
                     "📜 Riwayat Pesan" -> replaceFragment(HistoryFragment())
                     "🔔 Pengaturan Notifikasi" -> replaceFragment(NotificationSettingsFragment())
-                    "👑 Panel Admin" -> {
-                        if (UserManager.isAdmin()) {
-                            replaceFragment(AdminPanelFragment())
-                        } else {
-                            showAccessDeniedDialog()
-                        }
-                    }
+                    "👑 Panel Admin" -> replaceFragment(AdminPanelFragment())
                     "❓ Tentang Aplikasi" -> showAboutDialog()
                 }
             }
@@ -178,7 +174,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("""
                 Birthday Reminder
                 Versi 2.0
-
+                
                 Aplikasi pengingat ulang tahun untuk komunitas dengan fitur:
                 • Kalender ulang tahun
                 • Notifikasi otomatis
@@ -209,25 +205,52 @@ class MainActivity : AppCompatActivity() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "birthday_notification_work",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE, // UPDATE untuk selalu pakai schedule terbaru
             dailyWorkRequest
         )
 
-        Log.d("MainActivity", "WorkManager setup complete")
+        Log.d("MainActivity", "✅ WorkManager setup complete")
     }
 
     private fun calculateInitialDelay(): Long {
+        // Ambil settings dari user
+        val settings = NotificationSettingsManager.getSettings()
+        val notificationHour = settings.getHour()
+        val notificationMinute = settings.getMinute()
+
         val currentTime = System.currentTimeMillis()
         val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 8)
-            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.HOUR_OF_DAY, notificationHour)
+            set(java.util.Calendar.MINUTE, notificationMinute)
             set(java.util.Calendar.SECOND, 0)
 
             if (timeInMillis <= currentTime) {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
         }
-        return calendar.timeInMillis - currentTime
+
+        val delay = calendar.timeInMillis - currentTime
+        val delayMinutes = delay / 1000 / 60
+
+        Log.d("MainActivity", "📅 Next notification scheduled at: $notificationHour:${String.format("%02d", notificationMinute)}")
+        Log.d("MainActivity", "⏰ Delay: $delayMinutes minutes from now")
+
+        return delay
+    }
+
+    private fun monitorWorkManagerStatus() {
+        WorkManager.getInstance(this)
+            .getWorkInfosForUniqueWorkLiveData("birthday_notification_work")
+            .observe(this) { workInfos ->
+                workInfos?.forEach { workInfo ->
+                    Log.d("MainActivity", "🔍 WorkManager state: ${workInfo.state}")
+                    if (workInfo.state == WorkInfo.State.ENQUEUED) {
+                        Log.d("MainActivity", "✅ Work is scheduled and will run")
+                    } else if (workInfo.state == WorkInfo.State.RUNNING) {
+                        Log.d("MainActivity", "🏃 Work is currently running")
+                    }
+                }
+            }
     }
 
     private fun showLogoutDialog() {
@@ -262,9 +285,13 @@ class MainActivity : AppCompatActivity() {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Channel untuk ucapan ulang tahun"
+                enableLights(true)
+                enableVibration(true)
             }
+
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
+            Log.d("MainActivity", "✅ Notification channel created")
         }
     }
 
@@ -275,21 +302,42 @@ class MainActivity : AppCompatActivity() {
                     Manifest.permission.POST_NOTIFICATIONS
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
+                Log.d("MainActivity", "⚠️ Notification permission not granted, requesting...")
+
                 ActivityCompat.requestPermissions(
                     this,
                     arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                     NOTIFICATION_PERMISSION_REQUEST
                 )
+
+                android.widget.Toast.makeText(
+                    this,
+                    "⚠️ Izinkan notifikasi untuk menerima pengingat ulang tahun!",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            } else {
+                Log.d("MainActivity", "✅ Notification permission already granted")
             }
+        } else {
+            Log.d("MainActivity", "ℹ️ Android < 13, no notification permission needed")
         }
     }
 
-    // 🆕 Tambahan fungsi umum
-    private fun showAccessDeniedDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Akses Ditolak")
-            .setMessage("Fitur ini hanya dapat digunakan oleh Admin 👑")
-            .setPositiveButton("OK", null)
-            .show()
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("MainActivity", "✅ Notification permission granted by user")
+                android.widget.Toast.makeText(this, "✅ Notifikasi diaktifkan!", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                Log.d("MainActivity", "❌ Notification permission denied by user")
+                android.widget.Toast.makeText(this, "❌ Notifikasi ditolak. Anda tidak akan menerima pengingat.", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }

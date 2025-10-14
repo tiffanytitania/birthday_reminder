@@ -43,13 +43,11 @@ class NotificationSettingsFragment : Fragment() {
         binding.cbThreeDays.isChecked = settings.daysAhead.contains(3)
         binding.cbOneWeek.isChecked = settings.daysAhead.contains(7)
 
-        // Notification time (disimpan dalam menit total)
-        val totalMinutes = settings.notificationTime
-        val hour = totalMinutes / 60
-        val minute = totalMinutes % 60
-        binding.tvNotificationTime.text = String.format("%02d:%02d", hour, minute)
+        // Notification time
+        val hour = settings.notificationTime
+        binding.tvNotificationTime.text = String.format("%02d:00", hour)
 
-        // Enable/disable checkboxes
+        // Enable/disable checkboxes based on master switch
         updateCheckboxesState(settings.enabled)
     }
 
@@ -86,6 +84,21 @@ class NotificationSettingsFragment : Fragment() {
         binding.btnSave.setOnClickListener {
             saveSettings()
         }
+
+        // 🆕 TEST BUTTON (untuk debug)
+        binding.btnTestNotification?.setOnClickListener {
+            testNotificationNow()
+        }
+    }
+
+    // 🆕 Function untuk test notifikasi langsung
+    private fun testNotificationNow() {
+        com.example.birthday_reminder.utils.NotificationHelper.showBirthdayNotification(
+            requireContext(),
+            "Test User",
+            "🎉 Ini test notifikasi! Jika muncul, berarti notifikasi berfungsi."
+        )
+        Toast.makeText(requireContext(), "📢 Test notifikasi dikirim!", Toast.LENGTH_SHORT).show()
     }
 
     private fun updateCheckboxesState(enabled: Boolean) {
@@ -115,27 +128,22 @@ class NotificationSettingsFragment : Fragment() {
     }
 
     private fun showTimePicker() {
-        val settings = NotificationSettingsManager.getSettings()
-        val currentHour = settings.notificationTime / 60
-        val currentMinute = settings.notificationTime % 60
+        val currentHour = NotificationSettingsManager.getSettings().notificationTime
 
         TimePickerDialog(
             requireContext(),
-            { _, hourOfDay, minute ->
-                val totalMinutes = hourOfDay * 60 + minute
-                NotificationSettingsManager.setNotificationTime(totalMinutes)
-
-                // update tampilan ke format jam:menit yang rapi
-                binding.tvNotificationTime.text = String.format("%02d:%02d", hourOfDay, minute)
+            { _, hourOfDay, _ ->
+                NotificationSettingsManager.setNotificationTime(hourOfDay)
+                binding.tvNotificationTime.text = String.format("%02d:00", hourOfDay)
                 Toast.makeText(
                     requireContext(),
-                    "⏰ Notifikasi akan dikirim jam %02d:%02d".format(hourOfDay, minute),
+                    "⏰ Notifikasi akan dikirim jam $hourOfDay:00",
                     Toast.LENGTH_SHORT
                 ).show()
             },
             currentHour,
-            currentMinute,
-            true // format 24 jam
+            0,
+            true // 24 hour format
         ).show()
     }
 
