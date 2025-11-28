@@ -85,11 +85,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
-    // 🆕 Gson (untuk MessageManager - fitur messaging)
+    // Gson (untuk MessageManager - fitur messaging)
     implementation("com.google.code.gson:gson:2.10.1")
 
     // Unit & Instrumentation Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
 }

@@ -148,6 +148,67 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- 🆕 Location Feature -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#FFF3E0">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="📍 Location (Opsional)"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"
+                                android:fontFamily="@font/comic_sans"/>
+
+                            <Button
+                                android:id="@+id/btnGetLocation"
+                                android:layout_width="wrap_content"
+                                android:layout_height="36dp"
+                                android:text="Get Location"
+                                android:textSize="12sp"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:fontFamily="@font/comic_sans"/>
+                        </LinearLayout>
+
+                        <ProgressBar
+                            android:id="@+id/progressLocation"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:visibility="gone"/>
+
+                        <TextView
+                            android:id="@+id/tvLocationResult"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📍 Tidak ada lokasi"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
+                            android:fontFamily="@font/comic_sans"/>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Send Button -->
                 <Button
                     android:id="@+id/btnSend"
@@ -190,7 +251,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Tips: Gunakan template untuk ucapan cepat, atau tulis pesan personal untuk sentuhan lebih spesial!"
+                    android:text="Tips: Share lokasi kamu untuk ucapan yang lebih personal! AI akan menganalisis sentiment pesan kamu secara real-time."
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:fontFamily="@font/comic_sans"/>
