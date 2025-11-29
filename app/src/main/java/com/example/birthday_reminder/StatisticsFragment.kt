@@ -27,7 +27,7 @@ class StatisticsFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_statistics, container, false)
 
         database = FirebaseDatabase.getInstance(
-            "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
         tvTotalMembers = view.findViewById(R.id.tvTotalMembers)

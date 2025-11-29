@@ -61,7 +61,7 @@ class UserManagementFragment : Fragment() {
         binding.progressBar.visibility = View.VISIBLE
 
         val database = FirebaseDatabase.getInstance(
-            "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
         database.child("birthdays").addValueEventListener(object : ValueEventListener {

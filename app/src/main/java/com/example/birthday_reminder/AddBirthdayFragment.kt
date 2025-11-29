@@ -39,7 +39,7 @@ class AddBirthdayFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         try {
-            database = FirebaseDatabase.getInstance("https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/")
+            database = FirebaseDatabase.getInstance("https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/")
                 .reference
 
             setupRecyclerView()
