@@ -20,6 +20,7 @@ import com.example.birthday_reminder.databinding.ActivityMainBinding
 import com.example.birthday_reminder.messaging.MessageManager
 import com.example.birthday_reminder.settings.NotificationSettingsManager
 import com.example.birthday_reminder.worker.BirthdayWorker
+import com.google.firebase.auth.FirebaseAuth // TAMBAH INI
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -33,6 +34,22 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // ========== TAMBAH INI DI PALING ATAS ==========
+        // Sign in anonymous dulu sebelum akses Firebase
+        FirebaseAuth.getInstance().signInAnonymously()
+            .addOnSuccessListener {
+                Log.d("Firebase", "✅ Anonymous auth success")
+                initializeApp() // Lanjut init app
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firebase", "❌ Anonymous auth failed", e)
+                // Tetap lanjut meskipun gagal (untuk testing)
+                initializeApp()
+            }
+    }
+
+    // ========== PINDAHKAN SEMUA KODE INIT KE SINI ==========
+    private fun initializeApp() {
         // Inisialisasi UserManager dengan context
         UserManager.init(this)
 
@@ -201,7 +218,7 @@ class MainActivity : AppCompatActivity() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "birthday_notification_work",
-            ExistingPeriodicWorkPolicy.REPLACE, // REPLACE agar selalu pakai schedule terbaru
+            ExistingPeriodicWorkPolicy.REPLACE,
             dailyWorkRequest
         )
 
@@ -211,7 +228,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun calculateInitialDelay(): Long {
-        // Ambil settings dari user (sekarang support menit!)
         val settings = NotificationSettingsManager.getSettings()
         val notificationHour = settings.getHour()
         val notificationMinute = settings.getMinute()
@@ -223,7 +239,6 @@ class MainActivity : AppCompatActivity() {
             set(java.util.Calendar.SECOND, 0)
             set(java.util.Calendar.MILLISECOND, 0)
 
-            // Jika waktu sudah lewat hari ini, jadwalkan untuk besok
             if (timeInMillis <= currentTime) {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }

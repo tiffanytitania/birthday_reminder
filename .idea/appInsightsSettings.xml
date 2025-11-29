@@ -9,9 +9,9 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.birthday_reminder" />
-                  <option name="mobileSdkAppId" value="1:808124936895:android:b7e1b04ab39a8699208c0a" />
-                  <option name="projectId" value="birthday-reminder-f26d8" />
-                  <option name="projectNumber" value="808124936895" />
+                  <option name="mobileSdkAppId" value="1:497166734809:android:fc422a8934aba719aef5c8" />
+                  <option name="projectId" value="birthday-reminder-fa6fb" />
+                  <option name="projectNumber" value="497166734809" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
