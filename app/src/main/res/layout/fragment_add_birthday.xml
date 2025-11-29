@@ -8,8 +8,6 @@
     android:orientation="vertical"
     tools:context=".AddBirthdayFragment">
 
-    <!-- ❌ HAPUS TextView yang ada di sini jika ada -->
-
     <!-- 🔍 SEARCH BAR -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
@@ -28,6 +26,16 @@
             app:iconifiedByDefault="false"
             app:searchIcon="@android:drawable/ic_menu_search" />
     </com.google.android.material.card.MaterialCardView>
+
+    <!-- ✅ PROGRESSBAR BARU (UNTUK MVVM) -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        style="?android:attr/progressBarStyle"/>
 
     <!-- RecyclerView untuk list -->
     <androidx.recyclerview.widget.RecyclerView
