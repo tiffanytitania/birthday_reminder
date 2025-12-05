@@ -10,7 +10,6 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import com.example.birthday_reminder.auth.UserManager
@@ -23,6 +22,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.*
 
 class SendGreetingFragment : Fragment() {
     private var _binding: FragmentSendGreetingBinding? = null
@@ -30,21 +30,21 @@ class SendGreetingFragment : Fragment() {
 
     private val membersList = mutableListOf<String>()
 
-    // 🆕 ML Feature
+    // 🆕 ML Feature - TensorFlow Lite
     private lateinit var sentimentAnalyzer: SentimentAnalyzer
+    private val analysisScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    // 🆕 Location Feature
+    // Location Feature
     private lateinit var locationHelper: LocationHelper
     private var currentLocationString: String? = null
 
-    // 🆕 Location Permission Launcher
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
             getLocationAndSend()
         } else {
-            Toast.makeText(requireContext(), "⚠️ Location permission denied. Mengirim tanpa lokasi.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "⚠️ Location permission denied", Toast.LENGTH_SHORT).show()
             sendGreetingWithoutLocation()
         }
     }
@@ -63,10 +63,30 @@ class SendGreetingFragment : Fragment() {
 
         MessageManager.init(requireContext())
 
-        // 🆕 Initialize ML
-        sentimentAnalyzer = SentimentAnalyzer(requireContext())
+        // 🆕 Initialize TensorFlow Lite Sentiment Analyzer
+        try {
+            sentimentAnalyzer = SentimentAnalyzer(requireContext())
 
-        // 🆕 Initialize Location
+            // Safe model info logging (use reflection if methods exist)
+            val modelInfo = safeInvokeStringMethod(sentimentAnalyzer, "getModelInfo")
+                ?: safeInvokeStringMethod(sentimentAnalyzer, "modelInfo")
+                ?: "No model info available"
+            android.util.Log.d("SendGreeting", modelInfo)
+
+            val modelReady = safeInvokeBooleanMethod(sentimentAnalyzer, "isModelReady")
+                ?: safeInvokeBooleanMethod(sentimentAnalyzer, "modelReady")
+                ?: false
+
+            if (modelReady) {
+                Toast.makeText(requireContext(), "✅ ML Model Ready!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "⚠️ ML Model fallback mode", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SendGreeting", "Failed to init ML", e)
+            Toast.makeText(requireContext(), "❌ ML initialization failed", Toast.LENGTH_SHORT).show()
+        }
+
         locationHelper = LocationHelper(requireContext())
 
         loadMembers()
@@ -139,14 +159,13 @@ class SendGreetingFragment : Fragment() {
                     Toast.makeText(requireContext(), "Anggota tidak ditemukan", Toast.LENGTH_SHORT).show()
                 }
                 else -> {
-                    // 🆕 Check location permission dulu sebelum kirim
                     checkLocationPermissionAndSend()
                 }
             }
         }
     }
 
-    // 🆕 Setup Sentiment Analysis
+    // 🆕 Setup TensorFlow Lite Sentiment Analysis
     private fun setupSentimentAnalysis() {
         binding.etMessage.addTextChangedListener { text ->
             val message = text.toString().trim()
@@ -155,16 +174,28 @@ class SendGreetingFragment : Fragment() {
                 binding.tvSentimentResult.text = "Sentiment: Ketik pesan untuk analisis..."
                 binding.tvConfidence.text = "Confidence: -"
             } else {
-                val sentiment = sentimentAnalyzer.analyzeSentiment(message)
-                val confidence = sentimentAnalyzer.getConfidence(message)
+                // Run ML inference in background thread
+                analysisScope.launch {
+                    try {
+                        val sentiment = sentimentAnalyzer.analyzeSentiment(message)
+                        val confidence = sentimentAnalyzer.getConfidence(message)
 
-                binding.tvSentimentResult.text = "Sentiment: $sentiment"
-                binding.tvConfidence.text = "Confidence: $confidence%"
+                        withContext(Dispatchers.Main) {
+                            binding.tvSentimentResult.text = "Sentiment: $sentiment"
+                            binding.tvConfidence.text = "Confidence: $confidence%"
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("SendGreeting", "Sentiment analysis error", e)
+                        withContext(Dispatchers.Main) {
+                            binding.tvSentimentResult.text = "Sentiment: Error"
+                            binding.tvConfidence.text = "Confidence: -"
+                        }
+                    }
+                }
             }
         }
     }
 
-    // 🆕 Setup Location Display
     private fun setupLocationDisplay() {
         binding.btnGetLocation.setOnClickListener {
             if (locationHelper.hasLocationPermission()) {
@@ -175,12 +206,10 @@ class SendGreetingFragment : Fragment() {
         }
     }
 
-    // 🆕 Check location permission sebelum kirim
     private fun checkLocationPermissionAndSend() {
         if (locationHelper.hasLocationPermission()) {
             getLocationAndSend()
         } else {
-            // Tanya user apakah mau share location
             AlertDialog.Builder(requireContext())
                 .setTitle("📍 Share Lokasi?")
                 .setMessage("Kirim ucapan dengan lokasi kamu?\n\n(Opsional - bisa skip)")
@@ -194,12 +223,10 @@ class SendGreetingFragment : Fragment() {
         }
     }
 
-    // 🆕 Request location permission
     private fun requestLocationPermission() {
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    // 🆕 Get current location
     private fun getCurrentLocation() {
         binding.progressLocation.visibility = View.VISIBLE
         binding.tvLocationResult.text = "Getting location..."
@@ -225,7 +252,6 @@ class SendGreetingFragment : Fragment() {
         )
     }
 
-    // 🆕 Get location and send greeting
     private fun getLocationAndSend() {
         binding.progressLocation.visibility = View.VISIBLE
 
@@ -240,13 +266,12 @@ class SendGreetingFragment : Fragment() {
             },
             onError = { error ->
                 binding.progressLocation.visibility = View.GONE
-                Toast.makeText(requireContext(), "Location error: $error. Sending without location.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Location error: $error", Toast.LENGTH_SHORT).show()
                 sendGreetingWithoutLocation()
             }
         )
     }
 
-    // 🆕 Send greeting WITH location
     private fun sendGreetingWithLocation(location: String) {
         val recipient = binding.actvRecipient.text.toString().trim()
         val message = binding.etMessage.text.toString().trim()
@@ -269,7 +294,6 @@ class SendGreetingFragment : Fragment() {
         }
     }
 
-    // Send greeting WITHOUT location (fallback)
     private fun sendGreetingWithoutLocation() {
         val recipient = binding.actvRecipient.text.toString().trim()
         val message = binding.etMessage.text.toString().trim()
@@ -295,10 +319,68 @@ class SendGreetingFragment : Fragment() {
         binding.etMessage.setText("")
         currentLocationString = null
         binding.tvLocationResult.text = "📍 Tidak ada lokasi"
+        binding.tvSentimentResult.text = "Sentiment: Ketik pesan untuk analisis..."
+        binding.tvConfidence.text = "Confidence: -"
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+
+        // 🆕 Clean up ML resources
+        try {
+            // Try to call close() if available, otherwise ignore
+            safeInvokeVoidMethod(sentimentAnalyzer, "close")
+            // cancel analysis scope
+            analysisScope.cancel()
+        } catch (e: Exception) {
+            android.util.Log.e("SendGreeting", "Error cleaning up", e)
+        }
+
         _binding = null
+    }
+
+    /**
+     * Reflection helpers: attempt to invoke methods if they exist.
+     * We don't want compile errors if SentimentAnalyzer doesn't expose these methods.
+     */
+    private fun safeInvokeStringMethod(target: Any, methodName: String): String? {
+        return try {
+            val method = target.javaClass.getMethod(methodName)
+            val result = method.invoke(target)
+            result?.toString()
+        } catch (e: NoSuchMethodException) {
+            null
+        } catch (e: Exception) {
+            android.util.Log.w("SendGreeting", "safeInvokeStringMethod error for $methodName", e)
+            null
+        }
+    }
+
+    private fun safeInvokeBooleanMethod(target: Any, methodName: String): Boolean? {
+        return try {
+            val method = target.javaClass.getMethod(methodName)
+            val result = method.invoke(target)
+            when (result) {
+                is Boolean -> result
+                is java.lang.Boolean -> result.booleanValue()
+                else -> null
+            }
+        } catch (e: NoSuchMethodException) {
+            null
+        } catch (e: Exception) {
+            android.util.Log.w("SendGreeting", "safeInvokeBooleanMethod error for $methodName", e)
+            null
+        }
+    }
+
+    private fun safeInvokeVoidMethod(target: Any, methodName: String) {
+        try {
+            val method = target.javaClass.getMethod(methodName)
+            method.invoke(target)
+        } catch (e: NoSuchMethodException) {
+            // method doesn't exist - that's fine
+        } catch (e: Exception) {
+            android.util.Log.w("SendGreeting", "safeInvokeVoidMethod error for $methodName", e)
+        }
     }
 }

@@ -40,6 +40,11 @@ android {
 
     buildFeatures {
         viewBinding = true
+        mlModelBinding = true
+    }
+
+    aaptOptions {
+        noCompress("tflite")
     }
 }
 
@@ -71,7 +76,7 @@ dependencies {
     implementation("com.squareup.moshi:moshi:1.15.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
 
-    // ✅ OkHttp (untuk ImageKit upload)
+    // OkHttp (untuk ImageKit upload)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
@@ -98,6 +103,12 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+
+    // TAMBAHAN BARU: TensorFlow Lite Dependencies
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0") // Optional: GPU acceleration
 
     // Unit & Instrumentation Tests
     testImplementation(libs.junit)

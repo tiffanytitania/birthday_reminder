@@ -19,7 +19,7 @@
     <!-- Camera (Native Feature #1) -->
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- 🆕 Location (Native Feature #2 - GPS) -->
+    <!--Location (Native Feature #2 - GPS) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
