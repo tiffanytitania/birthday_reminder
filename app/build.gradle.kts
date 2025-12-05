@@ -59,10 +59,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
     implementation("com.google.firebase:firebase-database-ktx:20.3.1")
     implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
-
-    // Firebase Storage (buat upload/download gambar, file, dsb)
     implementation("com.google.firebase:firebase-storage-ktx:20.3.0")
-
+    implementation("com.google.firebase:firebase-auth-ktx:23.1.0")
 
     // CalendarView
     implementation("com.prolificinteractive:material-calendarview:1.4.3")
@@ -72,6 +70,10 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
     implementation("com.squareup.moshi:moshi:1.15.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
+
+    // ✅ OkHttp (untuk ImageKit upload)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Glide (Image Loader)
     implementation("com.github.bumptech.glide:glide:4.16.0")
@@ -88,21 +90,17 @@ dependencies {
     // Gson (untuk MessageManager - fitur messaging)
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Unit & Instrumentation Tests
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    // Location Services
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
-    implementation("com.google.firebase:firebase-database-ktx:20.3.1")
-    implementation("com.google.firebase:firebase-auth-ktx:23.1.0")
-    implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
+
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-
-// StateFlow support
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+
+    // Unit & Instrumentation Tests
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

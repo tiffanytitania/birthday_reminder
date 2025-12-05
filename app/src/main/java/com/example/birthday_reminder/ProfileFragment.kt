@@ -1,11 +1,9 @@
 package com.example.birthday_reminder
 
 import android.app.DatePickerDialog
-import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,8 +16,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.example.birthday_reminder.auth.UserManager
+import com.example.birthday_reminder.utils.ImageKitConfig
+import com.example.birthday_reminder.utils.ImageKitManager
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,9 +38,15 @@ class ProfileFragment : Fragment() {
     private lateinit var btnEditProfile: Button
     private lateinit var btnChangePhoto: ImageButton
     private lateinit var cardRoleInfo: MaterialCardView
+    private lateinit var progressBar: ProgressBar
 
     private var selectedImageUri: Uri? = null
     private var photoUri: Uri? = null
+    private var isUploading = false
+
+    private val database = FirebaseDatabase.getInstance(
+        "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    ).reference
 
     // Request permissions
     private val requestPermissionLauncher = registerForActivityResult(
@@ -63,7 +70,7 @@ class ProfileFragment : Fragment() {
     ) { uri: Uri? ->
         uri?.let {
             selectedImageUri = it
-            loadProfilePhoto(it.toString())
+            uploadImageToImageKit(it)
         }
     }
 
@@ -73,7 +80,7 @@ class ProfileFragment : Fragment() {
     ) { success ->
         if (success && photoUri != null) {
             selectedImageUri = photoUri
-            loadProfilePhoto(photoUri.toString())
+            uploadImageToImageKit(photoUri!!)
         } else {
             Toast.makeText(requireContext(), "Gagal mengambil foto", Toast.LENGTH_SHORT).show()
         }
@@ -102,6 +109,7 @@ class ProfileFragment : Fragment() {
         btnEditProfile = view.findViewById(R.id.btnEditProfile)
         btnChangePhoto = view.findViewById(R.id.btnChangePhoto)
         cardRoleInfo = view.findViewById(R.id.cardRoleInfo)
+        progressBar = view.findViewById(R.id.progressBar)
     }
 
     private fun loadUserProfile() {
@@ -122,13 +130,34 @@ class ProfileFragment : Fragment() {
                 resources.getColor(R.color.primary, null)
         )
 
-        userData.photoUrl?.let { loadProfilePhoto(it) }
+        // Load profile photo dari ImageKit
+        userData.photoUrl?.let {
+            if (it.isNotEmpty()) {
+                loadProfilePhoto(it)
+            }
+        }
     }
 
     private fun loadProfilePhoto(url: String) {
+        if (url.isEmpty()) {
+            ivProfilePhoto.setImageResource(R.drawable.ic_person)
+            return
+        }
+
+        // Use ImageKit transformation untuk optimize
+        val optimizedUrl = ImageKitConfig.getTransformedUrl(
+            imageUrl = url,
+            width = 300,
+            height = 300,
+            quality = 80
+        )
+
+        android.util.Log.d("ProfileFragment", "Loading image: $optimizedUrl")
+
         Glide.with(this)
-            .load(url)
+            .load(optimizedUrl)
             .placeholder(R.drawable.ic_person)
+            .error(R.drawable.ic_person)
             .circleCrop()
             .into(ivProfilePhoto)
     }
@@ -138,8 +167,9 @@ class ProfileFragment : Fragment() {
         btnChangePhoto.setOnClickListener { showPhotoOptionsDialog() }
     }
 
-    /** ---------------------- POPUP FOTO PROFIL ---------------------- **/
     private fun showPhotoOptionsDialog() {
+        if (!isAdded || context == null) return
+
         val dialogView = layoutInflater.inflate(R.layout.dialog_photo_options, null)
         val dialog = AlertDialog.Builder(requireContext())
             .setView(dialogView)
@@ -150,7 +180,6 @@ class ProfileFragment : Fragment() {
         val btnRemove = dialogView.findViewById<Button>(R.id.btnRemove)
         val btnClose = dialogView.findViewById<ImageButton>(R.id.btnClose)
 
-        // Camera button
         btnCamera.setOnClickListener {
             dialog.dismiss()
             checkAndRequestCameraPermission()
@@ -164,6 +193,20 @@ class ProfileFragment : Fragment() {
         btnRemove.setOnClickListener {
             ivProfilePhoto.setImageResource(R.drawable.ic_person)
             selectedImageUri = null
+
+            val username = UserManager.getCurrentUser() ?: return@setOnClickListener
+            val userData = UserManager.getUserData(username) ?: return@setOnClickListener
+
+            UserManager.updateProfile(
+                fullName = userData.fullName,
+                birthDate = userData.birthDate,
+                phone = userData.phone,
+                photoUrl = null
+            )
+
+            // Sync ke Firebase
+            syncPhotoUrlToFirebase(null)
+
             Toast.makeText(requireContext(), "Foto profil dihapus", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
         }
@@ -173,11 +216,98 @@ class ProfileFragment : Fragment() {
         dialog.show()
     }
 
-    /** ---------------------- CHECK & REQUEST CAMERA PERMISSION ---------------------- **/
+    /** =============== UPLOAD KE IMAGEKIT =============== **/
+    private fun uploadImageToImageKit(uri: Uri) {
+        if (isUploading) {
+            Toast.makeText(requireContext(), "Upload sedang berjalan...", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        isUploading = true
+        progressBar.visibility = View.VISIBLE
+        btnChangePhoto.isEnabled = false
+
+        android.util.Log.d("ProfileFragment", "🔄 Starting upload process...")
+
+        lifecycleScope.launch {
+            try {
+                val username = UserManager.getCurrentUser() ?: "unknown"
+                val fileName = "profile_${username}_${System.currentTimeMillis()}.jpg"
+
+                android.util.Log.d("ProfileFragment", "📤 Uploading as: $fileName")
+
+                val imageUrl = ImageKitManager.uploadImage(
+                    context = requireContext(),
+                    imageUri = uri,
+                    folder = ImageKitConfig.PROFILE_FOLDER,
+                    fileName = fileName
+                )
+
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    btnChangePhoto.isEnabled = true
+                    isUploading = false
+
+                    if (imageUrl != null) {
+                        android.util.Log.d("ProfileFragment", "✅ Upload success: $imageUrl")
+                        Toast.makeText(requireContext(), "✅ Foto berhasil diupload!", Toast.LENGTH_SHORT).show()
+
+                        // Load image ke UI
+                        loadProfilePhoto(imageUrl)
+
+                        // Save URL ke UserManager (local)
+                        saveProfilePhotoUrl(imageUrl)
+
+                        // Sync ke Firebase
+                        syncPhotoUrlToFirebase(imageUrl)
+
+                    } else {
+                        android.util.Log.e("ProfileFragment", "❌ Upload failed: imageUrl is null")
+                        Toast.makeText(requireContext(), "❌ Gagal upload foto. Cek log untuk detail.", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileFragment", "❌ Upload exception", e)
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    btnChangePhoto.isEnabled = true
+                    isUploading = false
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun saveProfilePhotoUrl(imageUrl: String) {
+        val username = UserManager.getCurrentUser() ?: return
+        val userData = UserManager.getUserData(username) ?: return
+
+        UserManager.updateProfile(
+            fullName = userData.fullName,
+            birthDate = userData.birthDate,
+            phone = userData.phone,
+            photoUrl = imageUrl
+        )
+
+        android.util.Log.d("ProfileFragment", "✅ Photo URL saved locally")
+    }
+
+    private fun syncPhotoUrlToFirebase(imageUrl: String?) {
+        val username = UserManager.getCurrentUser() ?: return
+
+        database.child("users").child(username).child("photoUrl").setValue(imageUrl ?: "")
+            .addOnSuccessListener {
+                android.util.Log.d("ProfileFragment", "✅ Photo URL synced to Firebase")
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("ProfileFragment", "❌ Failed to sync photo URL", e)
+            }
+    }
+
     private fun checkAndRequestCameraPermission() {
         val permissionsNeeded = mutableListOf<String>()
 
-        // Check CAMERA permission
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 android.Manifest.permission.CAMERA
@@ -186,7 +316,6 @@ class ProfileFragment : Fragment() {
             permissionsNeeded.add(android.Manifest.permission.CAMERA)
         }
 
-        // For Android 13+, check READ_MEDIA_IMAGES instead of READ_EXTERNAL_STORAGE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     requireContext(),
@@ -212,7 +341,6 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    /** ---------------------- OPEN CAMERA ---------------------- **/
     private fun openCamera() {
         try {
             val photoFile = File(
@@ -230,7 +358,6 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    /** ---------------------- EDIT PROFIL ---------------------- **/
     private fun showEditProfileDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_profile, null)
 
@@ -262,7 +389,7 @@ class ProfileFragment : Fragment() {
                         fullName = fullName,
                         birthDate = birthDate.ifEmpty { null },
                         phone = phone.ifEmpty { null },
-                        photoUrl = selectedImageUri?.toString()
+                        photoUrl = userData.photoUrl
                     )
 
                     if (success) {
@@ -293,7 +420,6 @@ class ProfileFragment : Fragment() {
             .show()
     }
 
-    /** ---------------------- PICKER TANGGAL ---------------------- **/
     private fun showDatePicker(onDateSelected: (String) -> Unit) {
         val calendar = Calendar.getInstance()
         val year = calendar.get(Calendar.YEAR)
@@ -303,19 +429,5 @@ class ProfileFragment : Fragment() {
         DatePickerDialog(requireContext(), { _, y, m, d ->
             onDateSelected("$d/${m + 1}/$y")
         }, year, month, day).show()
-    }
-
-    private fun saveBitmapToCache(bitmap: android.graphics.Bitmap): Uri? {
-        val cachePath = File(requireContext().cacheDir, "images")
-        cachePath.mkdirs()
-        val file = File(cachePath, "profile_photo.png")
-        val stream = java.io.FileOutputStream(file)
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
-        stream.close()
-        return FileProvider.getUriForFile(
-            requireContext(),
-            "${requireContext().packageName}.fileprovider",
-            file
-        )
     }
 }

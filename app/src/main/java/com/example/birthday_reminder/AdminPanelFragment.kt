@@ -1,7 +1,5 @@
 package com.example.birthday_reminder
 
-import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.*
@@ -9,11 +7,17 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.example.birthday_reminder.auth.UserManager
+import com.example.birthday_reminder.utils.ImageKitConfig
+import com.example.birthday_reminder.utils.ImageKitManager
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AdminPanelFragment : Fragment() {
 
@@ -29,11 +33,14 @@ class AdminPanelFragment : Fragment() {
     private lateinit var btnUserSettings: Button
     private lateinit var imgCommunityBanner: ImageView
     private lateinit var btnUploadImage: Button
+    private lateinit var progressBarUpload: ProgressBar
+
+    private var isUploading = false
 
     private val pickImageLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { handleLocalImage(it) }
+        uri?.let { uploadBannerToImageKit(it) }
     }
 
     override fun onCreateView(
@@ -65,6 +72,7 @@ class AdminPanelFragment : Fragment() {
         btnUserSettings = view.findViewById(R.id.btnUserSettings)
         imgCommunityBanner = view.findViewById(R.id.imgCommunityBanner)
         btnUploadImage = view.findViewById(R.id.btnUploadImage)
+        progressBarUpload = view.findViewById(R.id.progressBarUpload)
 
         val username = UserManager.getCurrentUser() ?: "Admin"
         tvAdminWelcome.text = "Selamat datang, $username 👑"
@@ -83,23 +91,14 @@ class AdminPanelFragment : Fragment() {
 
                 val name = snapshot.child("name").getValue(String::class.java) ?: "Komunitas Saya"
                 val desc = snapshot.child("description").getValue(String::class.java) ?: ""
+                val bannerUrl = snapshot.child("bannerUrl").getValue(String::class.java)
 
                 etCommunityName.setText(name)
                 etCommunityDesc.setText(desc)
 
-                val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
-                val localUri = prefs.getString("localBannerUri", null)
-
-                if (localUri != null) {
-                    try {
-                        Glide.with(requireContext())
-                            .load(Uri.parse(localUri))
-                            .placeholder(R.drawable.banner_placeholder)
-                            .error(R.drawable.banner_placeholder)
-                            .into(imgCommunityBanner)
-                    } catch (e: Exception) {
-                        imgCommunityBanner.setImageResource(R.drawable.banner_placeholder)
-                    }
+                // Load banner dari ImageKit
+                if (!bannerUrl.isNullOrEmpty()) {
+                    loadBannerImage(bannerUrl)
                 } else {
                     imgCommunityBanner.setImageResource(R.drawable.banner_placeholder)
                 }
@@ -133,21 +132,96 @@ class AdminPanelFragment : Fragment() {
         }
     }
 
-    private fun handleLocalImage(uri: Uri) {
-        selectedImageUri = uri
-        try {
-            Glide.with(requireContext())
-                .load(uri)
-                .placeholder(R.drawable.banner_placeholder)
-                .error(R.drawable.banner_placeholder)
-                .into(imgCommunityBanner)
-        } catch (e: Exception) {
-            imgCommunityBanner.setImageResource(R.drawable.banner_placeholder)
+    /** =============== UPLOAD BANNER KE IMAGEKIT =============== **/
+    private fun uploadBannerToImageKit(uri: Uri) {
+        if (!isAdded) return
+
+        if (isUploading) {
+            Toast.makeText(requireContext(), "Upload sedang berjalan...", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
-        prefs.edit().putString("localBannerUri", uri.toString()).apply()
-        Toast.makeText(requireContext(), "✅ Gambar komunitas diset secara lokal", Toast.LENGTH_SHORT).show()
+        isUploading = true
+        progressBarUpload.visibility = View.VISIBLE
+        btnUploadImage.isEnabled = false
+
+        android.util.Log.d("AdminPanel", "🔄 Starting banner upload...")
+
+        lifecycleScope.launch {
+            try {
+                val fileName = "community_banner_${System.currentTimeMillis()}.jpg"
+
+                val imageUrl = ImageKitManager.uploadImage(
+                    context = requireContext(),
+                    imageUri = uri,
+                    folder = ImageKitConfig.BANNER_FOLDER,
+                    fileName = fileName
+                )
+
+                withContext(Dispatchers.Main) {
+                    progressBarUpload.visibility = View.GONE
+                    btnUploadImage.isEnabled = true
+                    isUploading = false
+
+                    if (imageUrl != null) {
+                        android.util.Log.d("AdminPanel", "✅ Banner upload success: $imageUrl")
+                        Toast.makeText(requireContext(), "✅ Banner berhasil diupload!", Toast.LENGTH_SHORT).show()
+
+                        // Load image ke UI
+                        loadBannerImage(imageUrl)
+
+                        // Save URL ke Firebase
+                        saveBannerUrlToFirebase(imageUrl)
+
+                    } else {
+                        android.util.Log.e("AdminPanel", "❌ Banner upload failed")
+                        Toast.makeText(requireContext(), "❌ Gagal upload banner", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+            } catch (e: Exception) {
+                android.util.Log.e("AdminPanel", "❌ Upload exception", e)
+                withContext(Dispatchers.Main) {
+                    progressBarUpload.visibility = View.GONE
+                    btnUploadImage.isEnabled = true
+                    isUploading = false
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun loadBannerImage(url: String) {
+        if (url.isEmpty()) {
+            imgCommunityBanner.setImageResource(R.drawable.banner_placeholder)
+            return
+        }
+
+        // Use ImageKit transformation untuk optimize
+        val optimizedUrl = ImageKitConfig.getTransformedUrl(
+            imageUrl = url,
+            width = 1200,
+            height = 400,
+            quality = 85
+        )
+
+        android.util.Log.d("AdminPanel", "Loading banner: $optimizedUrl")
+
+        Glide.with(requireContext())
+            .load(optimizedUrl)
+            .placeholder(R.drawable.banner_placeholder)
+            .error(R.drawable.banner_placeholder)
+            .into(imgCommunityBanner)
+    }
+
+    private fun saveBannerUrlToFirebase(imageUrl: String) {
+        database.child("community_info").child("bannerUrl").setValue(imageUrl)
+            .addOnSuccessListener {
+                android.util.Log.d("AdminPanel", "✅ Banner URL saved to Firebase")
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("AdminPanel", "❌ Failed to save banner URL", e)
+            }
     }
 
     private fun saveCommunityInfo() {

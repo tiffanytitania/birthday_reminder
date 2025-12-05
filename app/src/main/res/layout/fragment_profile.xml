@@ -11,7 +11,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Header Profile -->
+        <!-- Header Profile Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -24,7 +24,7 @@
                 android:layout_height="wrap_content"
                 android:padding="24dp">
 
-                <!-- Profile Photo -->
+                <!-- Profile Photo Container -->
                 <RelativeLayout
                     android:id="@+id/photoContainer"
                     android:layout_width="120dp"
@@ -39,6 +39,7 @@
                         android:scaleType="centerCrop"
                         android:background="@drawable/circle_background" />
 
+                    <!-- Camera Button -->
                     <ImageButton
                         android:id="@+id/btnChangePhoto"
                         android:layout_width="36dp"
@@ -51,15 +52,26 @@
                         android:contentDescription="Change Photo" />
                 </RelativeLayout>
 
+                <!-- ✅ Progress Bar (NEW) -->
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/photoContainer"
+                    android:layout_centerHorizontal="true"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    style="?android:attr/progressBarStyle"/>
+
                 <!-- Username -->
                 <TextView
                     android:id="@+id/tvUsername"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/photoContainer"
+                    android:layout_below="@id/progressBar"
                     android:layout_centerHorizontal="true"
                     android:layout_marginTop="16dp"
-                    android:text="\@username"
+                    android:text="@username"
                     android:textSize="18sp"
                     android:textColor="@color/text_secondary"
                     android:fontFamily="@font/comic_sans" />
@@ -123,9 +135,10 @@
                     android:layout_marginBottom="12dp">
 
                     <TextView
-                        android:layout_width="100dp"
+                        android:layout_width="120dp"
                         android:layout_height="wrap_content"
                         android:text="Nama Lengkap"
+                        android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:fontFamily="@font/comic_sans" />
 
@@ -148,9 +161,10 @@
                     android:layout_marginBottom="12dp">
 
                     <TextView
-                        android:layout_width="100dp"
+                        android:layout_width="120dp"
                         android:layout_height="wrap_content"
                         android:text="Tanggal Lahir"
+                        android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:fontFamily="@font/comic_sans" />
 
@@ -171,9 +185,10 @@
                     android:orientation="horizontal">
 
                     <TextView
-                        android:layout_width="100dp"
+                        android:layout_width="120dp"
                         android:layout_height="wrap_content"
                         android:text="Telepon"
+                        android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:fontFamily="@font/comic_sans" />
 

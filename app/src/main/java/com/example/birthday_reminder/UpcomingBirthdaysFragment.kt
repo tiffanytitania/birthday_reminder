@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.database.*
+import com.example.birthday_reminder.utils.ImageKitConfig
 import java.util.*
 
 class UpcomingBirthdaysFragment : Fragment() {
@@ -58,8 +59,8 @@ class UpcomingBirthdaysFragment : Fragment() {
         rvThisWeek.layoutManager = LinearLayoutManager(requireContext())
         rvThisMonth.layoutManager = LinearLayoutManager(requireContext())
 
-        // 🔹 Tampilkan banner komunitas (diset dari AdminPanel)
-        loadLocalBanner()
+        // 🔹 Tampilkan banner komunitas dari Firebase dengan ImageKit optimization
+        loadCommunityBanner()
 
         // 🔹 Muat data ulang tahun
         loadBirthdays()
@@ -67,26 +68,43 @@ class UpcomingBirthdaysFragment : Fragment() {
         return view
     }
 
-
+    /**
+     * Load banner komunitas dari Firebase Database
+     * Menggunakan ImageKit untuk optimasi gambar
+     */
     private fun loadCommunityBanner() {
-        val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
-        val localUri = prefs.getString("localBannerUri", null)
+        database.child("community_info").child("bannerUrl").get()
+            .addOnSuccessListener { snapshot ->
+                val bannerUrl = snapshot.getValue(String::class.java)
 
-        if (localUri != null) {
-            try {
-                Glide.with(requireContext())
-                    .load(Uri.parse(localUri))
-                    .placeholder(R.drawable.banner_placeholder)
-                    .error(R.drawable.banner_placeholder)
-                    .into(imgBanner)
-            } catch (e: Exception) {
-                imgBanner.setImageResource(R.drawable.banner_placeholder)
+                if (!bannerUrl.isNullOrEmpty()) {
+                    // Optimasi gambar menggunakan ImageKit
+                    val optimizedUrl = ImageKitConfig.getTransformedUrl(
+                        imageUrl = bannerUrl,
+                        width = 800,
+                        height = 300,
+                        quality = 80
+                    )
+
+                    Glide.with(requireContext())
+                        .load(optimizedUrl)
+                        .placeholder(R.drawable.banner_placeholder)
+                        .error(R.drawable.banner_placeholder)
+                        .into(imgBanner)
+                } else {
+                    // Fallback ke local banner jika URL kosong
+                    loadLocalBanner()
+                }
             }
-        } else {
-            imgBanner.setImageResource(R.drawable.banner_placeholder)
-        }
+            .addOnFailureListener {
+                // Fallback ke local banner jika gagal mengambil dari Firebase
+                loadLocalBanner()
+            }
     }
 
+    /**
+     * Fallback: Load banner dari SharedPreferences (local URI)
+     */
     private fun loadLocalBanner() {
         val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
         val localUri = prefs.getString("localBannerUri", null)
@@ -210,7 +228,6 @@ class UpcomingBirthdaysFragment : Fragment() {
             rvThisMonth.adapter = UpcomingAdapter(monthList)
         }
     }
-
 }
 
 
