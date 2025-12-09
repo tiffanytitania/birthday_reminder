@@ -14,14 +14,22 @@ import com.google.firebase.database.*
 import com.prolificinteractive.materialcalendarview.*
 import com.prolificinteractive.materialcalendarview.spans.DotSpan
 import java.util.*
+import com.example.birthday_reminder.data.model.Birthday
+import androidx.recyclerview.widget.LinearLayoutManager
+
+
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var database: DatabaseReference
-    private val birthdays = mutableListOf<Pair<String, String>>()
+    private val birthdays = mutableListOf<Birthday>()
+
     private var birthdayListener: ValueEventListener? = null
+
+    private lateinit var birthdayAdapter: BirthdayListAdapter
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,9 +43,17 @@ class HomeFragment : Fragment() {
 
             fetchBirthdays()
 
-            binding.calendarView.setOnDateChangedListener { _, date, _ ->
-                showBirthdayList(date)
+            birthdayAdapter = BirthdayListAdapter()
+            binding.birthdayRecycler.apply {
+                adapter = birthdayAdapter
+                layoutManager = LinearLayoutManager(requireContext())
             }
+
+
+            binding.calendarView.setOnDateChangedListener { _, date, _ ->
+                updateBirthdayList(date)
+            }
+
         } catch (e: Exception) {
             Log.e("HomeFragment", "Error in onCreateView", e)
             Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -53,11 +69,11 @@ class HomeFragment : Fragment() {
                     birthdays.clear()
                     for (data in snapshot.children) {
                         try {
-                            val date = data.child("date").getValue(String::class.java)
-                            val name = data.child("name").getValue(String::class.java)
-                            if (date != null && name != null) {
-                                birthdays.add(Pair(date, name))
+                            val birthday = data.getValue(Birthday::class.java)
+                            if (birthday != null) {
+                                birthdays.add(birthday)
                             }
+
                         } catch (e: Exception) {
                             Log.e("HomeFragment", "Error parsing birthday data", e)
                         }
@@ -66,6 +82,8 @@ class HomeFragment : Fragment() {
                     activity?.runOnUiThread {
                         if (isAdded && _binding != null) {
                             highlightBirthdays()
+                            val today = CalendarDay.today()
+                            updateBirthdayList(today)
                         }
                     }
                 }
@@ -92,7 +110,8 @@ class HomeFragment : Fragment() {
                 override fun shouldDecorate(day: CalendarDay): Boolean {
                     val calendarDay = day.day
                     val calendarMonth = day.month + 1
-                    return birthdays.any { dateMatches(it.first, calendarDay, calendarMonth) }
+                    return birthdays.any { dateMatches(it.date, calendarDay, calendarMonth) }
+
                 }
 
                 override fun decorate(view: DayViewFacade) {
@@ -109,41 +128,15 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun showBirthdayList(date: CalendarDay) {
-        if (!isAdded || context == null) return
+    private fun updateBirthdayList(date: CalendarDay) {
+        val day = date.day
+        val month = date.month + 1
 
-        try {
-            val day = date.day
-            val month = date.month + 1
-            val yearNow = Calendar.getInstance().get(Calendar.YEAR)
-
-            val people = birthdays.filter { dateMatches(it.first, day, month) }
-
-            if (people.isEmpty()) return
-
-            val names = people.map { it.second }.toTypedArray()
-
-            AlertDialog.Builder(requireContext())
-                .setTitle("Ulang Tahun 🎉 (${day}/${month})")
-                .setItems(names) { _, which ->
-                    val selected = people[which]
-                    val birthDate = selected.first
-                    val name = selected.second
-
-                    val age = calculateAge(birthDate, yearNow)
-
-                    AlertDialog.Builder(requireContext())
-                        .setTitle(name)
-                        .setMessage("Tanggal Lahir: $birthDate\nUsia saat ini: $age tahun")
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-                .setNegativeButton("Tutup", null)
-                .show()
-        } catch (e: Exception) {
-            Log.e("HomeFragment", "Error showing birthday list", e)
-            Toast.makeText(context, "Error menampilkan data", Toast.LENGTH_SHORT).show()
+        val people = birthdays.filter {
+            dateMatches(it.date, day, month)
         }
+        birthdayAdapter.setBirthdays(people)
+
     }
 
     private fun calculateAge(dateString: String, currentYear: Int): Int {
