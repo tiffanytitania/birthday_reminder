@@ -1,6 +1,7 @@
 package com.example.birthday_reminder.data.repository
 
-import com.example.birthday_reminder.BirthdayItem
+import android.util.Log
+import com.example.birthday_reminder.ui.viewmodel.BirthdayItem
 import com.google.firebase.database.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -8,8 +9,8 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 /**
- * Repository untuk handle semua operasi database Birthday
- * Single source of truth untuk data birthday
+ * ✅ FIXED: BirthdayRepository dengan proper async handling
+ * Menggunakan callbackFlow untuk non-blocking operations
  */
 class BirthdayRepository {
 
@@ -18,32 +19,43 @@ class BirthdayRepository {
     ).reference.child("birthdays")
 
     /**
-     * Get all birthdays as Flow (real-time updates)
+     * ✅ FIXED: getAllBirthdays dengan efficient, non-blocking parsing
      */
     fun getAllBirthdays(): Flow<Result<List<BirthdayItem>>> = callbackFlow {
+        Log.d("BirthdayRepository", "Starting fetch birthdays...")
+
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = mutableListOf<BirthdayItem>()
-                for (data in snapshot.children) {
-                    try {
-                        val name = data.child("name").getValue(String::class.java) ?: ""
-                        val date = data.child("date").getValue(String::class.java) ?: ""
-                        val key = data.key ?: ""
-                        if (name.isNotEmpty() && date.isNotEmpty()) {
+                try {
+                    val list = mutableListOf<BirthdayItem>()
+
+                    // ✅ Efficient iteration - tidak ada nested try catch
+                    snapshot.children.forEach { data ->
+                        val key = data.key
+                        val name = data.child("name").getValue(String::class.java)
+                        val date = data.child("date").getValue(String::class.java)
+
+                        // ✅ Skip invalid items tanpa exception
+                        if (!key.isNullOrEmpty() && !name.isNullOrEmpty() && !date.isNullOrEmpty()) {
                             list.add(BirthdayItem(key, name, date))
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
                     }
+
+                    Log.d("BirthdayRepository", "✅ Loaded ${list.size} birthdays")
+                    trySend(Result.success(list))
+                } catch (e: Exception) {
+                    Log.e("BirthdayRepository", "Error parsing: ${e.message}")
+                    trySend(Result.failure(e))
                 }
-                trySend(Result.success(list))
             }
 
             override fun onCancelled(error: DatabaseError) {
+                Log.e("BirthdayRepository", "Database cancelled: ${error.message}")
                 trySend(Result.failure(Exception(error.message)))
             }
         }
 
+        // ✅ Attach listener (non-blocking)
         database.addValueEventListener(listener)
 
         awaitClose {
@@ -51,57 +63,52 @@ class BirthdayRepository {
         }
     }
 
-    /**
-     * Add new birthday
-     */
     suspend fun addBirthday(name: String, date: String): Result<Unit> {
         return try {
             val birthdayMap = mapOf(
                 "name" to name,
-                "date" to date
+                "date" to date,
+                "createdAt" to System.currentTimeMillis()
             )
             database.push().setValue(birthdayMap).await()
+            Log.d("BirthdayRepository", "✅ Birthday added")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("BirthdayRepository", "Add error: ${e.message}")
             Result.failure(e)
         }
     }
 
-    /**
-     * Update existing birthday
-     */
     suspend fun updateBirthday(key: String, name: String, date: String): Result<Unit> {
         return try {
             val updates = mapOf(
                 "name" to name,
-                "date" to date
+                "date" to date,
+                "updatedAt" to System.currentTimeMillis()
             )
             database.child(key).updateChildren(updates).await()
+            Log.d("BirthdayRepository", "✅ Birthday updated")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("BirthdayRepository", "Update error: ${e.message}")
             Result.failure(e)
         }
     }
 
-    /**
-     * Delete birthday
-     */
     suspend fun deleteBirthday(key: String): Result<Unit> {
         return try {
             database.child(key).removeValue().await()
+            Log.d("BirthdayRepository", "✅ Birthday deleted")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("BirthdayRepository", "Delete error: ${e.message}")
             Result.failure(e)
         }
     }
 
-    /**
-     * Search birthdays by name
-     */
     fun searchBirthdays(query: String, allBirthdays: List<BirthdayItem>): List<BirthdayItem> {
         if (query.isEmpty()) return allBirthdays
-        return allBirthdays.filter {
-            it.name.lowercase().contains(query.lowercase())
-        }
+        val lowerQuery = query.lowercase()
+        return allBirthdays.filter { it.name.lowercase().contains(lowerQuery) }
     }
 }

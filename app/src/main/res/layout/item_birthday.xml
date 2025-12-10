@@ -41,7 +41,7 @@
             android:layout_marginStart="16dp">
 
             <TextView
-                android:id="@+id/tvName"
+                android:id="@+id/BirthdayName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nama"
@@ -51,7 +51,7 @@
                 android:fontFamily="@font/comic_sans"/>
 
             <TextView
-                android:id="@+id/tvDate"
+                android:id="@+id/tvBirthdayDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="01/01/2000"

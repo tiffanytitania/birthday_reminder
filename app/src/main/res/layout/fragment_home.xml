@@ -48,6 +48,16 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@+id/birthdayRecycler"
+        app:layout_constraintBottom_toBottomOf="@+id/birthdayRecycler"
+        app:layout_constraintStart_toStartOf="@+id/birthdayRecycler"
+        app:layout_constraintEnd_toEndOf="@+id/birthdayRecycler" />
+
     <!-- LIST OF BIRTHDAYS BELOW THE CALENDAR -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/birthdayRecycler"

@@ -9,16 +9,31 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.firebase.database.*
+import com.example.birthday_reminder.databinding.FragmentUpcomingBirthdaysBinding
+import com.example.birthday_reminder.ui.viewmodel.BirthdayViewModel
+import com.example.birthday_reminder.ui.viewmodel.BirthdayItem
 import com.example.birthday_reminder.utils.ImageKitConfig
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
 import java.util.*
 
 class UpcomingBirthdaysFragment : Fragment() {
 
+    private var _binding: FragmentUpcomingBirthdaysBinding? = null
+    private val binding get() = _binding!!
+
+    // ✅ Use ViewModel instead of direct Firebase
+    private val viewModel: BirthdayViewModel by viewModels()
+
+    // Firebase reference untuk banner only (bukan untuk birthdays)
     private lateinit var database: DatabaseReference
+
     private lateinit var rvToday: RecyclerView
     private lateinit var rvThisWeek: RecyclerView
     private lateinit var rvThisMonth: RecyclerView
@@ -30,42 +45,151 @@ class UpcomingBirthdaysFragment : Fragment() {
     private lateinit var tvEmptyMonth: TextView
     private lateinit var imgBanner: ImageView
 
-    private val allBirthdays = mutableListOf<BirthdayItem>()
-
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val view = inflater.inflate(R.layout.fragment_upcoming_birthdays, container, false)
+        _binding = FragmentUpcomingBirthdaysBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-        // 🔹 Inisialisasi database Firebase
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Initialize Firebase only for banner
         database = FirebaseDatabase.getInstance(
             "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
-        // 🔹 Inisialisasi View
-        imgBanner = view.findViewById(R.id.imgCommunityBannerTop)
-        rvToday = view.findViewById(R.id.rvToday)
-        rvThisWeek = view.findViewById(R.id.rvThisWeek)
-        rvThisMonth = view.findViewById(R.id.rvThisMonth)
-        tvTodayCount = view.findViewById(R.id.tvTodayCount)
-        tvWeekCount = view.findViewById(R.id.tvWeekCount)
-        tvMonthCount = view.findViewById(R.id.tvMonthCount)
-        tvEmptyToday = view.findViewById(R.id.tvEmptyToday)
-        tvEmptyWeek = view.findViewById(R.id.tvEmptyWeek)
-        tvEmptyMonth = view.findViewById(R.id.tvEmptyMonth)
+        // Initialize views
+        initializeViews()
+
+        // Load banner from Firebase
+        loadCommunityBanner()
+
+        // ✅ Observe ViewModel instead of direct Firebase
+        observeViewModel()
+    }
+
+    private fun initializeViews() {
+        imgBanner = binding.imgCommunityBannerTop
+        rvToday = binding.rvToday
+        rvThisWeek = binding.rvThisWeek
+        rvThisMonth = binding.rvThisMonth
+        tvTodayCount = binding.tvTodayCount
+        tvWeekCount = binding.tvWeekCount
+        tvMonthCount = binding.tvMonthCount
+        tvEmptyToday = binding.tvEmptyToday
+        tvEmptyWeek = binding.tvEmptyWeek
+        tvEmptyMonth = binding.tvEmptyMonth
 
         rvToday.layoutManager = LinearLayoutManager(requireContext())
         rvThisWeek.layoutManager = LinearLayoutManager(requireContext())
         rvThisMonth.layoutManager = LinearLayoutManager(requireContext())
+    }
 
-        // 🔹 Tampilkan banner komunitas dari Firebase dengan ImageKit optimization
-        loadCommunityBanner()
+    /**
+     * ✅ Observe ViewModel untuk mendapatkan data birthdays
+     */
+    private fun observeViewModel() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.birthdays.collect { birthdays ->
+                categorizeBirthdays(birthdays)
+            }
+        }
+    }
 
-        // 🔹 Muat data ulang tahun
-        loadBirthdays()
+    /**
+     * Kategorisasi birthdays ke Today, This Week, This Month
+     */
+    private fun categorizeBirthdays(allBirthdays: List<BirthdayItem>) {
+        val today = Calendar.getInstance()
+        val todayDay = today.get(Calendar.DAY_OF_MONTH)
+        val todayMonth = today.get(Calendar.MONTH) + 1
 
-        return view
+        val weekLater = Calendar.getInstance().apply { add(Calendar.WEEK_OF_YEAR, 1) }
+        val monthLater = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
+
+        val todayList = mutableListOf<BirthdayItem>()
+        val weekList = mutableListOf<BirthdayItem>()
+        val monthList = mutableListOf<BirthdayItem>()
+
+        for (birthday in allBirthdays) {
+            val parts = birthday.date.split("/")
+            if (parts.size < 2) continue
+
+            val day = parts[0].toIntOrNull() ?: continue
+            val month = parts[1].toIntOrNull() ?: continue
+
+            // Today
+            if (day == todayDay && month == todayMonth) {
+                todayList.add(birthday)
+            }
+
+            // Calculate next occurrence
+            val birthdayCal = Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_MONTH, day)
+                set(Calendar.MONTH, month - 1)
+                if (before(today)) {
+                    add(Calendar.YEAR, 1)
+                }
+            }
+
+            // Within this week
+            if (birthdayCal.timeInMillis <= weekLater.timeInMillis && birthdayCal >= today) {
+                weekList.add(birthday)
+            }
+
+            // Within this month
+            if (birthdayCal.timeInMillis <= monthLater.timeInMillis && birthdayCal >= today) {
+                monthList.add(birthday)
+            }
+        }
+
+        updateUI(todayList, weekList, monthList)
+    }
+
+    /**
+     * Update UI dengan data yang sudah dikategorisasi
+     */
+    private fun updateUI(
+        todayList: List<BirthdayItem>,
+        weekList: List<BirthdayItem>,
+        monthList: List<BirthdayItem>
+    ) {
+        // Today
+        tvTodayCount.text = "${todayList.size} orang"
+        if (todayList.isEmpty()) {
+            tvEmptyToday.visibility = View.VISIBLE
+            rvToday.visibility = View.GONE
+        } else {
+            tvEmptyToday.visibility = View.GONE
+            rvToday.visibility = View.VISIBLE
+            rvToday.adapter = UpcomingAdapter(todayList)
+        }
+
+        // This Week
+        tvWeekCount.text = "${weekList.size} orang"
+        if (weekList.isEmpty()) {
+            tvEmptyWeek.visibility = View.VISIBLE
+            rvThisWeek.visibility = View.GONE
+        } else {
+            tvEmptyWeek.visibility = View.GONE
+            rvThisWeek.visibility = View.VISIBLE
+            rvThisWeek.adapter = UpcomingAdapter(weekList)
+        }
+
+        // This Month
+        tvMonthCount.text = "${monthList.size} orang"
+        if (monthList.isEmpty()) {
+            tvEmptyMonth.visibility = View.VISIBLE
+            rvThisMonth.visibility = View.GONE
+        } else {
+            tvEmptyMonth.visibility = View.GONE
+            rvThisMonth.visibility = View.VISIBLE
+            rvThisMonth.adapter = UpcomingAdapter(monthList)
+        }
     }
 
     /**
@@ -124,113 +248,16 @@ class UpcomingBirthdaysFragment : Fragment() {
         }
     }
 
-    private fun loadBirthdays() {
-        database.child("birthdays").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                allBirthdays.clear()
-                for (data in snapshot.children) {
-                    val name = data.child("name").getValue(String::class.java) ?: ""
-                    val date = data.child("date").getValue(String::class.java) ?: ""
-                    val key = data.key ?: ""
-                    if (name.isNotEmpty() && date.isNotEmpty()) {
-                        allBirthdays.add(BirthdayItem(key, name, date))
-                    }
-                }
-                categorizeBirthdays()
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
-    }
-
-    private fun categorizeBirthdays() {
-        val today = Calendar.getInstance()
-        val todayDay = today.get(Calendar.DAY_OF_MONTH)
-        val todayMonth = today.get(Calendar.MONTH) + 1
-
-        val weekLater = Calendar.getInstance().apply { add(Calendar.WEEK_OF_YEAR, 1) }
-        val monthLater = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
-
-        val todayList = mutableListOf<BirthdayItem>()
-        val weekList = mutableListOf<BirthdayItem>()
-        val monthList = mutableListOf<BirthdayItem>()
-
-        for (birthday in allBirthdays) {
-            val parts = birthday.date.split("/")
-            if (parts.size < 2) continue
-
-            val day = parts[0].toIntOrNull() ?: continue
-            val month = parts[1].toIntOrNull() ?: continue
-
-            // Today
-            if (day == todayDay && month == todayMonth) {
-                todayList.add(birthday)
-            }
-
-            // Calculate next occurrence
-            val birthdayCal = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_MONTH, day)
-                set(Calendar.MONTH, month - 1)
-                if (before(today)) {
-                    add(Calendar.YEAR, 1)
-                }
-            }
-
-            // Within this week
-            if (birthdayCal.timeInMillis <= weekLater.timeInMillis && birthdayCal >= today) {
-                weekList.add(birthday)
-            }
-
-            // Within this month
-            if (birthdayCal.timeInMillis <= monthLater.timeInMillis && birthdayCal >= today) {
-                monthList.add(birthday)
-            }
-        }
-
-        updateUI(todayList, weekList, monthList)
-    }
-
-    private fun updateUI(
-        todayList: List<BirthdayItem>,
-        weekList: List<BirthdayItem>,
-        monthList: List<BirthdayItem>
-    ) {
-        // Today
-        tvTodayCount.text = "${todayList.size} orang"
-        if (todayList.isEmpty()) {
-            tvEmptyToday.visibility = View.VISIBLE
-            rvToday.visibility = View.GONE
-        } else {
-            tvEmptyToday.visibility = View.GONE
-            rvToday.visibility = View.VISIBLE
-            rvToday.adapter = UpcomingAdapter(todayList)
-        }
-
-        // This Week
-        tvWeekCount.text = "${weekList.size} orang"
-        if (weekList.isEmpty()) {
-            tvEmptyWeek.visibility = View.VISIBLE
-            rvThisWeek.visibility = View.GONE
-        } else {
-            tvEmptyWeek.visibility = View.GONE
-            rvThisWeek.visibility = View.VISIBLE
-            rvThisWeek.adapter = UpcomingAdapter(weekList)
-        }
-
-        // This Month
-        tvMonthCount.text = "${monthList.size} orang"
-        if (monthList.isEmpty()) {
-            tvEmptyMonth.visibility = View.VISIBLE
-            rvThisMonth.visibility = View.GONE
-        } else {
-            tvEmptyMonth.visibility = View.GONE
-            rvThisMonth.visibility = View.VISIBLE
-            rvThisMonth.adapter = UpcomingAdapter(monthList)
-        }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
 
-
+/**
+ * ✅ Simple adapter untuk upcoming birthdays
+ * Hanya menampilkan name dan date
+ */
 class UpcomingAdapter(private val items: List<BirthdayItem>) :
     RecyclerView.Adapter<UpcomingAdapter.ViewHolder>() {
 
