@@ -100,7 +100,7 @@
                         android:fontFamily="@font/comic_sans"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- 🆕 ML Feature: Sentiment Analysis Result -->
+                <!-- ML Feature: Sentiment Analysis Result -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -148,7 +148,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- 🆕 Location Feature -->
+                <!-- Location Feature -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -205,6 +205,18 @@
                             android:textSize="12sp"
                             android:textColor="@color/text_secondary"
                             android:fontFamily="@font/comic_sans"/>
+
+                        <!-- Button untuk membuka Google Maps -->
+                        <Button
+                            android:id="@+id/btnOpenMaps"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:text="🗺️ Lihat di Google Maps"
+                            android:textSize="12sp"
+                            android:visibility="gone"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:fontFamily="@font/comic_sans"
+                            android:layout_marginTop="8dp"/>
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>

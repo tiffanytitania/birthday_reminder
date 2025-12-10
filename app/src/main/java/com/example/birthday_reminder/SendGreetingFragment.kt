@@ -1,8 +1,14 @@
 package com.example.birthday_reminder
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
+import android.location.Address
+import android.location.Geocoder
+import android.location.Location
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.birthday_reminder.auth.UserManager
 import com.example.birthday_reminder.data.model.MessageType
 import com.example.birthday_reminder.databinding.FragmentSendGreetingBinding
@@ -23,6 +30,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.*
+import java.util.Locale
 
 class SendGreetingFragment : Fragment() {
     private var _binding: FragmentSendGreetingBinding? = null
@@ -30,13 +38,21 @@ class SendGreetingFragment : Fragment() {
 
     private val membersList = mutableListOf<String>()
 
-    // 🆕 ML Feature - TensorFlow Lite
+    // ML Feature
     private lateinit var sentimentAnalyzer: SentimentAnalyzer
     private val analysisScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     // Location Feature
     private lateinit var locationHelper: LocationHelper
+    private lateinit var geocoder: Geocoder
     private var currentLocationString: String? = null
+
+    private var currentLatitude: Double? = null
+    private var currentLongitude: Double? = null
+    private var currentCityName: String? = null
+
+    // Flag untuk tracking location request
+    private var isLocationLoading = false
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -63,28 +79,24 @@ class SendGreetingFragment : Fragment() {
 
         MessageManager.init(requireContext())
 
-        // 🆕 Initialize TensorFlow Lite Sentiment Analyzer
+        geocoder = Geocoder(requireContext(), Locale("id", "ID"))
+
+        // Initialize ML
         try {
             sentimentAnalyzer = SentimentAnalyzer(requireContext())
 
-            // Safe model info logging (use reflection if methods exist)
-            val modelInfo = safeInvokeStringMethod(sentimentAnalyzer, "getModelInfo")
-                ?: safeInvokeStringMethod(sentimentAnalyzer, "modelInfo")
-                ?: "No model info available"
-            android.util.Log.d("SendGreeting", modelInfo)
-
-            val modelReady = safeInvokeBooleanMethod(sentimentAnalyzer, "isModelReady")
-                ?: safeInvokeBooleanMethod(sentimentAnalyzer, "modelReady")
-                ?: false
+            val modelReady = try {
+                val method = sentimentAnalyzer.javaClass.getMethod("isModelReady")
+                method.invoke(sentimentAnalyzer) as? Boolean ?: false
+            } catch (e: Exception) {
+                false
+            }
 
             if (modelReady) {
                 Toast.makeText(requireContext(), "✅ ML Model Ready!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "⚠️ ML Model fallback mode", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            android.util.Log.e("SendGreeting", "Failed to init ML", e)
-            Toast.makeText(requireContext(), "❌ ML initialization failed", Toast.LENGTH_SHORT).show()
+            Log.e("SendGreeting", "Failed to init ML", e)
         }
 
         locationHelper = LocationHelper(requireContext())
@@ -94,6 +106,7 @@ class SendGreetingFragment : Fragment() {
         setupSendButton()
         setupSentimentAnalysis()
         setupLocationDisplay()
+        setupGoogleMapsButton()
     }
 
     private fun loadMembers() {
@@ -165,7 +178,6 @@ class SendGreetingFragment : Fragment() {
         }
     }
 
-    // 🆕 Setup TensorFlow Lite Sentiment Analysis
     private fun setupSentimentAnalysis() {
         binding.etMessage.addTextChangedListener { text ->
             val message = text.toString().trim()
@@ -174,7 +186,6 @@ class SendGreetingFragment : Fragment() {
                 binding.tvSentimentResult.text = "Sentiment: Ketik pesan untuk analisis..."
                 binding.tvConfidence.text = "Confidence: -"
             } else {
-                // Run ML inference in background thread
                 analysisScope.launch {
                     try {
                         val sentiment = sentimentAnalyzer.analyzeSentiment(message)
@@ -185,11 +196,7 @@ class SendGreetingFragment : Fragment() {
                             binding.tvConfidence.text = "Confidence: $confidence%"
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("SendGreeting", "Sentiment analysis error", e)
-                        withContext(Dispatchers.Main) {
-                            binding.tvSentimentResult.text = "Sentiment: Error"
-                            binding.tvConfidence.text = "Confidence: -"
-                        }
+                        Log.e("SendGreeting", "Sentiment analysis error", e)
                     }
                 }
             }
@@ -198,11 +205,47 @@ class SendGreetingFragment : Fragment() {
 
     private fun setupLocationDisplay() {
         binding.btnGetLocation.setOnClickListener {
+            if (isLocationLoading) {
+                Toast.makeText(requireContext(), "⏳ Tunggu sebentar...", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             if (locationHelper.hasLocationPermission()) {
                 getCurrentLocation()
             } else {
                 requestLocationPermission()
             }
+        }
+    }
+
+    private fun setupGoogleMapsButton() {
+        binding.btnOpenMaps.setOnClickListener {
+            openGoogleMaps()
+        }
+    }
+
+    private fun openGoogleMaps() {
+        if (currentLatitude == null || currentLongitude == null) {
+            Toast.makeText(requireContext(), "Lokasi belum tersedia", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            val label = "Lokasi Saya"
+            val gmmIntentUri = Uri.parse("geo:$currentLatitude,$currentLongitude?q=$currentLatitude,$currentLongitude($label)")
+            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+            mapIntent.setPackage("com.google.android.apps.maps")
+
+            if (mapIntent.resolveActivity(requireContext().packageManager) != null) {
+                startActivity(mapIntent)
+            } else {
+                val browserUri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$currentLatitude,$currentLongitude")
+                val browserIntent = Intent(Intent.ACTION_VIEW, browserUri)
+                startActivity(browserIntent)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Gagal membuka Maps: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("SendGreeting", "Error opening maps", e)
         }
     }
 
@@ -228,48 +271,236 @@ class SendGreetingFragment : Fragment() {
     }
 
     private fun getCurrentLocation() {
+        if (isLocationLoading) return
+
+        isLocationLoading = true
         binding.progressLocation.visibility = View.VISIBLE
         binding.tvLocationResult.text = "Getting location..."
+        binding.btnOpenMaps.visibility = View.GONE
+        binding.btnGetLocation.isEnabled = false
 
         locationHelper.getCurrentLocation(
             onSuccess = { location ->
-                val locationStr = locationHelper.formatLocation(location)
-                val cityName = locationHelper.getCityName(location)
+                Log.d("SendGreeting", "Location success: ${location.latitude}, ${location.longitude}")
+                currentLatitude = location.latitude
+                currentLongitude = location.longitude
+                currentLocationString = locationHelper.formatLocation(location)
 
-                currentLocationString = locationStr
-
-                binding.progressLocation.visibility = View.GONE
-                binding.tvLocationResult.text = "📍 $cityName\n$locationStr"
-
-                Toast.makeText(requireContext(), "✅ Location obtained!", Toast.LENGTH_SHORT).show()
+                // Fetch city name dengan Geocoder
+                fetchCityName(location)
             },
             onError = { error ->
+                Log.e("SendGreeting", "Location error: $error")
+                isLocationLoading = false
                 binding.progressLocation.visibility = View.GONE
-                binding.tvLocationResult.text = "❌ Failed to get location"
+                binding.tvLocationResult.text = "❌ Failed: $error"
+                binding.btnOpenMaps.visibility = View.GONE
+                binding.btnGetLocation.isEnabled = true
 
-                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "⚠️ $error", Toast.LENGTH_LONG).show()
             }
         )
     }
 
+    private fun fetchCityName(location: Location) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("SendGreeting", "Fetching city name for: ${location.latitude}, ${location.longitude}")
+
+                val cityName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // API 33+ - Gunakan callback dengan timeout
+                    var result: String? = null
+                    val latch = java.util.concurrent.CountDownLatch(1)
+
+                    withContext(Dispatchers.Main) {
+                        geocoder.getFromLocation(
+                            location.latitude,
+                            location.longitude,
+                            1,
+                            object : Geocoder.GeocodeListener {
+                                override fun onGeocode(addresses: MutableList<Address>) {
+                                    result = if (addresses.isNotEmpty()) {
+                                        buildLocationString(addresses[0])
+                                    } else {
+                                        "Unknown Location"
+                                    }
+                                    latch.countDown()
+                                }
+
+                                override fun onError(errorMessage: String?) {
+                                    Log.e("SendGreeting", "Geocoder error: $errorMessage")
+                                    result = "Unknown Location"
+                                    latch.countDown()
+                                }
+                            }
+                        )
+                    }
+
+                    // Tunggu max 5 detik
+                    latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                    result ?: "Unknown Location"
+
+                } else {
+                    // API 32 ke bawah - Sync call
+                    try {
+                        @Suppress("DEPRECATION")
+                        val addresses = geocoder.getFromLocation(
+                            location.latitude,
+                            location.longitude,
+                            1
+                        )
+
+                        if (!addresses.isNullOrEmpty()) {
+                            buildLocationString(addresses[0])
+                        } else {
+                            "Unknown Location"
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SendGreeting", "Geocoder error: ${e.message}")
+                        "Unknown Location"
+                    }
+                }
+
+                Log.d("SendGreeting", "City name resolved: $cityName")
+
+                withContext(Dispatchers.Main) {
+                    updateLocationUI(cityName)
+                }
+
+            } catch (e: Exception) {
+                Log.e("SendGreeting", "Error fetching city name", e)
+                withContext(Dispatchers.Main) {
+                    updateLocationUI("Unknown Location")
+                }
+            }
+        }
+    }
+
+    private fun buildLocationString(address: Address): String {
+        val components = mutableListOf<String>()
+
+        address.subLocality?.let { components.add(it) }
+        address.locality?.let { components.add(it) }
+        address.subAdminArea?.let {
+            if (!components.contains(it)) components.add(it)
+        }
+        address.adminArea?.let {
+            if (!components.contains(it)) components.add(it)
+        }
+
+        Log.d("SendGreeting", "Address components: $components")
+
+        return if (components.isNotEmpty()) {
+            components.take(2).joinToString(", ") // Ambil max 2 components
+        } else {
+            address.countryName ?: "Unknown Location"
+        }
+    }
+
+    private fun updateLocationUI(cityName: String) {
+        isLocationLoading = false
+        currentCityName = cityName
+        binding.progressLocation.visibility = View.GONE
+        binding.tvLocationResult.text = "📍 $cityName\n$currentLocationString"
+        binding.btnOpenMaps.visibility = View.VISIBLE
+        binding.btnGetLocation.isEnabled = true
+        Toast.makeText(requireContext(), "✅ Location obtained!", Toast.LENGTH_SHORT).show()
+    }
+
     private fun getLocationAndSend() {
+        if (isLocationLoading) return
+
+        isLocationLoading = true
         binding.progressLocation.visibility = View.VISIBLE
+        binding.btnSend.isEnabled = false
 
         locationHelper.getCurrentLocation(
             onSuccess = { location ->
-                binding.progressLocation.visibility = View.GONE
+                currentLatitude = location.latitude
+                currentLongitude = location.longitude
+                currentLocationString = locationHelper.formatLocation(location)
 
-                val locationStr = locationHelper.formatLocation(location)
-                val cityName = locationHelper.getCityName(location)
-
-                sendGreetingWithLocation("$cityName ($locationStr)")
+                // Fetch city name dulu sebelum kirim
+                fetchCityNameAndSend(location)
             },
             onError = { error ->
+                isLocationLoading = false
                 binding.progressLocation.visibility = View.GONE
+                binding.btnSend.isEnabled = true
                 Toast.makeText(requireContext(), "Location error: $error", Toast.LENGTH_SHORT).show()
                 sendGreetingWithoutLocation()
             }
         )
+    }
+
+    private fun fetchCityNameAndSend(location: Location) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val cityName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    var result: String? = null
+                    val latch = java.util.concurrent.CountDownLatch(1)
+
+                    withContext(Dispatchers.Main) {
+                        geocoder.getFromLocation(
+                            location.latitude,
+                            location.longitude,
+                            1,
+                            object : Geocoder.GeocodeListener {
+                                override fun onGeocode(addresses: MutableList<Address>) {
+                                    result = if (addresses.isNotEmpty()) {
+                                        buildLocationString(addresses[0])
+                                    } else {
+                                        "Unknown Location"
+                                    }
+                                    latch.countDown()
+                                }
+
+                                override fun onError(errorMessage: String?) {
+                                    result = "Unknown Location"
+                                    latch.countDown()
+                                }
+                            }
+                        )
+                    }
+
+                    latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                    result ?: "Unknown Location"
+
+                } else {
+                    try {
+                        @Suppress("DEPRECATION")
+                        val addresses = geocoder.getFromLocation(
+                            location.latitude,
+                            location.longitude,
+                            1
+                        )
+
+                        if (!addresses.isNullOrEmpty()) {
+                            buildLocationString(addresses[0])
+                        } else {
+                            "Unknown Location"
+                        }
+                    } catch (e: Exception) {
+                        "Unknown Location"
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    isLocationLoading = false
+                    binding.progressLocation.visibility = View.GONE
+                    binding.btnSend.isEnabled = true
+                    sendGreetingWithLocation("$cityName ($currentLocationString)")
+                }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    isLocationLoading = false
+                    binding.progressLocation.visibility = View.GONE
+                    binding.btnSend.isEnabled = true
+                    sendGreetingWithLocation("Unknown Location ($currentLocationString)")
+                }
+            }
+        }
     }
 
     private fun sendGreetingWithLocation(location: String) {
@@ -318,69 +549,29 @@ class SendGreetingFragment : Fragment() {
         binding.actvRecipient.setText("")
         binding.etMessage.setText("")
         currentLocationString = null
+        currentLatitude = null
+        currentLongitude = null
+        currentCityName = null
         binding.tvLocationResult.text = "📍 Tidak ada lokasi"
+        binding.btnOpenMaps.visibility = View.GONE
         binding.tvSentimentResult.text = "Sentiment: Ketik pesan untuk analisis..."
         binding.tvConfidence.text = "Confidence: -"
+        binding.btnGetLocation.isEnabled = true
+        binding.btnSend.isEnabled = true
+        isLocationLoading = false
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
 
-        // 🆕 Clean up ML resources
         try {
-            // Try to call close() if available, otherwise ignore
-            safeInvokeVoidMethod(sentimentAnalyzer, "close")
-            // cancel analysis scope
-            analysisScope.cancel()
+            val method = sentimentAnalyzer.javaClass.getMethod("close")
+            method.invoke(sentimentAnalyzer)
         } catch (e: Exception) {
-            android.util.Log.e("SendGreeting", "Error cleaning up", e)
+            // Ignore
         }
 
+        analysisScope.cancel()
         _binding = null
-    }
-
-    /**
-     * Reflection helpers: attempt to invoke methods if they exist.
-     * We don't want compile errors if SentimentAnalyzer doesn't expose these methods.
-     */
-    private fun safeInvokeStringMethod(target: Any, methodName: String): String? {
-        return try {
-            val method = target.javaClass.getMethod(methodName)
-            val result = method.invoke(target)
-            result?.toString()
-        } catch (e: NoSuchMethodException) {
-            null
-        } catch (e: Exception) {
-            android.util.Log.w("SendGreeting", "safeInvokeStringMethod error for $methodName", e)
-            null
-        }
-    }
-
-    private fun safeInvokeBooleanMethod(target: Any, methodName: String): Boolean? {
-        return try {
-            val method = target.javaClass.getMethod(methodName)
-            val result = method.invoke(target)
-            when (result) {
-                is Boolean -> result
-                is java.lang.Boolean -> result.booleanValue()
-                else -> null
-            }
-        } catch (e: NoSuchMethodException) {
-            null
-        } catch (e: Exception) {
-            android.util.Log.w("SendGreeting", "safeInvokeBooleanMethod error for $methodName", e)
-            null
-        }
-    }
-
-    private fun safeInvokeVoidMethod(target: Any, methodName: String) {
-        try {
-            val method = target.javaClass.getMethod(methodName)
-            method.invoke(target)
-        } catch (e: NoSuchMethodException) {
-            // method doesn't exist - that's fine
-        } catch (e: Exception) {
-            android.util.Log.w("SendGreeting", "safeInvokeVoidMethod error for $methodName", e)
-        }
     }
 }
