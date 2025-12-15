@@ -66,11 +66,6 @@ object NotificationSettingsManager {
     fun setDaysAhead(days: List<Int>) {
         prefs.edit().putStringSet(KEY_DAYS_AHEAD, days.map { it.toString() }.toSet()).apply()
     }
-
-    /**
-     * Update jam notifikasi (dalam menit total, 0-1439)
-     * Contoh: 07:19 = 439 menit, 08:00 = 480 menit, 14:30 = 870 menit
-     */
     fun setNotificationTime(totalMinutes: Int) {
         // Validasi range (0-1439 menit = 00:00 - 23:59)
         val validMinutes = totalMinutes.coerceIn(0, 1439)

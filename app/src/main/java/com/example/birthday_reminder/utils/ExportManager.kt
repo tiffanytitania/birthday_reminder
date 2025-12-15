@@ -10,9 +10,6 @@ import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * ExportManager - Handle export data ke CSV dan share
- */
 object ExportManager {
 
     /**

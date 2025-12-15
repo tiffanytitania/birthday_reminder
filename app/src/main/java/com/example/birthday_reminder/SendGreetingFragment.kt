@@ -308,7 +308,6 @@ class SendGreetingFragment : Fragment() {
                 Log.d("SendGreeting", "Fetching city name for: ${location.latitude}, ${location.longitude}")
 
                 val cityName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    // API 33+ - Gunakan callback dengan timeout
                     var result: String? = null
                     val latch = java.util.concurrent.CountDownLatch(1)
 
@@ -341,7 +340,6 @@ class SendGreetingFragment : Fragment() {
                     result ?: "Unknown Location"
 
                 } else {
-                    // API 32 ke bawah - Sync call
                     try {
                         @Suppress("DEPRECATION")
                         val addresses = geocoder.getFromLocation(

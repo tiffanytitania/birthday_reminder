@@ -13,25 +13,11 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 
-/**
- * ImageKit Upload Manager
- * Handle upload gambar ke ImageKit.io
- */
 object ImageKitManager {
     private const val TAG = "ImageKitManager"
 
     private val client = OkHttpClient.Builder()
         .build()
-
-    /**
-     * Upload image dari URI (Gallery/Camera)
-     *
-     * @param context Android Context
-     * @param imageUri URI gambar
-     * @param folder Folder di ImageKit (profiles/, banners/, dll)
-     * @param fileName Nama file (opsional, auto-generate jika null)
-     * @return URL gambar yang berhasil diupload, atau null jika gagal
-     */
     suspend fun uploadImage(
         context: Context,
         imageUri: Uri,

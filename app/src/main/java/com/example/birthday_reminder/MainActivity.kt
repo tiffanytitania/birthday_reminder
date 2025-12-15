@@ -20,7 +20,7 @@ import com.example.birthday_reminder.databinding.ActivityMainBinding
 import com.example.birthday_reminder.messaging.MessageManager
 import com.example.birthday_reminder.settings.NotificationSettingsManager
 import com.example.birthday_reminder.worker.BirthdayWorker
-import com.google.firebase.auth.FirebaseAuth // TAMBAH INI
+import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -33,22 +33,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // ========== TAMBAH INI DI PALING ATAS ==========
-        // Sign in anonymous dulu sebelum akses Firebase
         FirebaseAuth.getInstance().signInAnonymously()
             .addOnSuccessListener {
                 Log.d("Firebase", "✅ Anonymous auth success")
-                initializeApp() // Lanjut init app
+                initializeApp()
             }
             .addOnFailureListener { e ->
                 Log.e("Firebase", "❌ Anonymous auth failed", e)
-                // Tetap lanjut meskipun gagal (untuk testing)
                 initializeApp()
             }
     }
-
-    // ========== PINDAHKAN SEMUA KODE INIT KE SINI ==========
     private fun initializeApp() {
         // Inisialisasi UserManager dengan context
         UserManager.init(this)
@@ -59,7 +53,7 @@ class MainActivity : AppCompatActivity() {
         // Inisialisasi NotificationSettingsManager
         NotificationSettingsManager.init(this)
 
-        // Cek apakah user sudah login (dengan persistence)
+        // Cek apakah user sudah login (w/presistence)
         if (!UserManager.isLoggedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()

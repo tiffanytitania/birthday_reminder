@@ -8,11 +8,6 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.birthday_reminder.ui.viewmodel.BirthdayItem
 
-/**
- * BirthdayListAdapter - Buttons optional (hanya jika ada di layout)
- * HomeFragment: item_home_birthday.xml (tanpa buttons)
- * AddBirthdayFragment: item_birthday.xml (dengan buttons)
- */
 class BirthdayListAdapter(
     private val items: MutableList<BirthdayItem> = mutableListOf(),
     private val isAdmin: Boolean = false,
@@ -24,15 +19,12 @@ class BirthdayListAdapter(
     inner class BirthdayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvName: TextView? = itemView.findViewById(R.id.tvBirthdayName)
         val tvDate: TextView? = itemView.findViewById(R.id.tvBirthdayDate)
-        // ✅ OPTIONAL - Cari button tapi jangan error jika tidak ada
         val btnDelete: ImageButton? = itemView.findViewById(R.id.btnDelete)
         val btnEdit: ImageButton? = itemView.findViewById(R.id.btnEdit)
 
         fun bind(item: BirthdayItem) {
             tvName?.text = item.name
             tvDate?.text = item.date
-
-            // ✅ Hanya set listener jika button ada di layout (gunakan safe call ?.)
             if (isAdmin && onEditClick != null && onDeleteClick != null) {
                 btnEdit?.visibility = View.VISIBLE
                 btnDelete?.visibility = View.VISIBLE

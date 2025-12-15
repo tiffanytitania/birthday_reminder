@@ -6,7 +6,7 @@ package com.example.birthday_reminder.data.model
 data class NotificationSettings(
     val enabled: Boolean = true,
     val daysAhead: List<Int> = listOf(0, 1, 3), // H-0, H-1, H-3 (default)
-    val notificationTime: Int = 480 // Jam notifikasi dalam MENIT TOTAL (default: 8:00 AM = 480 menit)
+    val notificationTime: Int = 480
 ) {
     /**
      * Get hour dari notification time

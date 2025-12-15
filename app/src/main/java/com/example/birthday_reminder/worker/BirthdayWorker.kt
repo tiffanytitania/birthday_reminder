@@ -9,10 +9,6 @@ import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.tasks.await
 import java.util.*
 
-/**
- * Worker yang menjalankan pengecekan ulang tahun secara otomatis
- * Support custom notification settings dari NotificationSettingsFragment
- */
 class BirthdayWorker(
     context: Context,
     params: WorkerParameters

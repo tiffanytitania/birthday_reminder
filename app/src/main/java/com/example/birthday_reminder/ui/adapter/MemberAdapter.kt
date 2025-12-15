@@ -80,7 +80,6 @@ class MemberAdapter(
             holder.tvRoleBadge.visibility = View.GONE
         }
 
-        // Enable/disable buttons berdasarkan ketersediaan phone
         val hasPhone = member.phone.isNotEmpty()
         holder.btnWhatsApp.isEnabled = hasPhone
         holder.btnCall.isEnabled = hasPhone

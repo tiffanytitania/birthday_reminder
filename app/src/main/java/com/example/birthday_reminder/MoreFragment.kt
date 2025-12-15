@@ -43,18 +43,14 @@ class MoreFragment : Fragment() {
 
         // Setup RecyclerView
         binding.rvQuotes.layoutManager = LinearLayoutManager(requireContext())
-
-        // Pastikan permission notifikasi di Android 13+ sudah diberikan
         requestNotificationPermission()
-
-        // 🆕 Setup navigation cards untuk messaging features
         setupMessagingMenu()
 
         // Ambil data ucapan dari API
         fetchQuotes()
     }
 
-    // 🆕 Setup menu cards untuk Kirim Ucapan & Kotak Pesan
+    // setup menu cards untuk Kirim Ucapan & Kotak Pesan
     private fun setupMessagingMenu() {
         // Card: Kirim Ucapan
         binding.cardSendGreeting.setOnClickListener {
@@ -101,14 +97,14 @@ class MoreFragment : Fragment() {
         val author = quote.author ?: "Anonim"
         val message = "Selamat Ulang Tahun! 🎉\n\n\"$text\"\n— $author"
 
-        // 🔹 Tampilkan notifikasi langsung di HP (fitur kirim antar pengguna)
+        // Tampilkan notifikasi langsung di HP (fitur kirim antar pengguna)
         NotificationHelper.showBirthdayNotification(
             requireContext(),
             name = "Temanmu", // nanti bisa diganti nama user dari database
             message = message
         )
 
-        // 🔹 (Masih bisa kirim lewat app lain juga)
+        // (Masih bisa kirim lewat app lain juga)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, message)

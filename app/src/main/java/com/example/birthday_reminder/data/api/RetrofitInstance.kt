@@ -12,7 +12,7 @@ object RetrofitInstance {
 
     val api: QuoteApiService by lazy {
         Retrofit.Builder()
-            .baseUrl("https://zenquotes.io/")  // domain dasar + slash
+            .baseUrl("https://zenquotes.io/")
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(QuoteApiService::class.java)

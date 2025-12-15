@@ -8,19 +8,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-/**
- * ✅ FIXED: BirthdayRepository dengan proper async handling
- * Menggunakan callbackFlow untuk non-blocking operations
- */
 class BirthdayRepository {
 
     private val database: DatabaseReference = FirebaseDatabase.getInstance(
         "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
     ).reference.child("birthdays")
 
-    /**
-     * ✅ FIXED: getAllBirthdays dengan efficient, non-blocking parsing
-     */
     fun getAllBirthdays(): Flow<Result<List<BirthdayItem>>> = callbackFlow {
         Log.d("BirthdayRepository", "Starting fetch birthdays...")
 
@@ -28,14 +21,13 @@ class BirthdayRepository {
             override fun onDataChange(snapshot: DataSnapshot) {
                 try {
                     val list = mutableListOf<BirthdayItem>()
-
-                    // ✅ Efficient iteration - tidak ada nested try catch
+                    // Efficient iteration
                     snapshot.children.forEach { data ->
                         val key = data.key
                         val name = data.child("name").getValue(String::class.java)
                         val date = data.child("date").getValue(String::class.java)
 
-                        // ✅ Skip invalid items tanpa exception
+                        // Skip invalid items tanpa exception
                         if (!key.isNullOrEmpty() && !name.isNullOrEmpty() && !date.isNullOrEmpty()) {
                             list.add(BirthdayItem(key, name, date))
                         }
@@ -55,7 +47,7 @@ class BirthdayRepository {
             }
         }
 
-        // ✅ Attach listener (non-blocking)
+        // Attach listener (non-blocking)
         database.addValueEventListener(listener)
 
         awaitClose {

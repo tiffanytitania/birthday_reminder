@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class StatisticsFragment : Fragment() {
 
-    // 🆕 ViewModel instance
+    // ViewModel instance
     private val viewModel: StatisticsViewModel by viewModels()
 
     private lateinit var tvTotalMembers: TextView
@@ -50,7 +50,7 @@ class StatisticsFragment : Fragment() {
         observeViewModel()
     }
 
-    // 🆕 Observe ViewModel
+    //Observe ViewModel
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

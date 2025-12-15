@@ -6,17 +6,8 @@ import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Helper class untuk testing fitur baru
- * HANYA DIGUNAKAN UNTUK DEVELOPMENT/TESTING
- * HAPUS SEBELUM PRODUCTION!
- */
 object TestHelper {
 
-    /**
-     * Generate dummy data ulang tahun untuk testing
-     * Memasukkan data dengan berbagai tanggal (hari ini, besok, minggu ini, dll)
-     */
     fun generateDummyBirthdays(context: Context) {
         val database = FirebaseDatabase.getInstance(
             "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
@@ -141,16 +132,3 @@ object TestHelper {
     }
 }
 
-/**
- * CARA MENGGUNAKAN TestHelper:
- *
- * 1. Di MainActivity onCreate(), tambahkan (TEMPORARY):
- *    TestHelper.generateDummyBirthdays(this)
- *    TestHelper.testNotificationNow(this)
- *
- * 2. Run aplikasi
- *
- * 3. Cek Logcat untuk hasilnya
- *
- * 4. HAPUS sebelum production!
- */

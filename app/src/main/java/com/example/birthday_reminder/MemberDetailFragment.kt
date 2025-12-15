@@ -90,7 +90,7 @@ class MemberDetailFragment : Fragment() {
             binding.tvDaysUntilBirthday.text = "-"
         }
 
-        // Profile photo (placeholder for now)
+        // Profile photo
         binding.ivProfilePhoto.setImageResource(R.drawable.ic_person)
     }
 

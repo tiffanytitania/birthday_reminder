@@ -12,7 +12,7 @@ class RegisterActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🧠 Inisialisasi UserManager
+        // Inisialisasi UserManager
         UserManager.init(this)
 
         binding = ActivityRegisterBinding.inflate(layoutInflater)
@@ -56,12 +56,12 @@ class RegisterActivity : AppCompatActivity() {
             }
         }
 
-        // 🔸 Tombol untuk kembali ke halaman login
+        // Tombol untuk kembali ke halaman login
         binding.tvLogin.setOnClickListener {
             finish()
         }
 
-        // 🔸 Tombol back (jika ada)
+        // Tombol back
         binding.btnBack.setOnClickListener {
             finish()
         }

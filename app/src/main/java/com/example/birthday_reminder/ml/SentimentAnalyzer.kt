@@ -3,11 +3,6 @@ package com.example.birthday_reminder.ml
 import android.content.Context
 
 class SentimentAnalyzer(private val context: Context) {
-
-    /**
-     * Analyze sentiment dari text greeting
-     * Returns: "Positive ✨", "Negative 😢", atau "Neutral 😐"
-     */
     fun analyzeSentiment(text: String): String {
         if (text.isEmpty()) return "Neutral 😐"
 

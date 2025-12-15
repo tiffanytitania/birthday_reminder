@@ -33,7 +33,7 @@ class MessagingFragment : Fragment() {
         MessageManager.init(requireContext())
         setupRecyclerView()
         setupTabs()
-        loadInbox() // Default tampilkan inbox
+        loadInbox()
     }
 
     private fun setupRecyclerView() {

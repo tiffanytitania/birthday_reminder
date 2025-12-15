@@ -27,11 +27,7 @@ class UpcomingBirthdaysFragment : Fragment() {
 
     private var _binding: FragmentUpcomingBirthdaysBinding? = null
     private val binding get() = _binding!!
-
-    // ✅ Use ViewModel instead of direct Firebase
     private val viewModel: BirthdayViewModel by viewModels()
-
-    // Firebase reference untuk banner only (bukan untuk birthdays)
     private lateinit var database: DatabaseReference
 
     private lateinit var rvToday: RecyclerView
@@ -68,7 +64,6 @@ class UpcomingBirthdaysFragment : Fragment() {
         // Load banner from Firebase
         loadCommunityBanner()
 
-        // ✅ Observe ViewModel instead of direct Firebase
         observeViewModel()
     }
 
@@ -88,10 +83,6 @@ class UpcomingBirthdaysFragment : Fragment() {
         rvThisWeek.layoutManager = LinearLayoutManager(requireContext())
         rvThisMonth.layoutManager = LinearLayoutManager(requireContext())
     }
-
-    /**
-     * ✅ Observe ViewModel untuk mendapatkan data birthdays
-     */
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.birthdays.collect { birthdays ->
@@ -99,10 +90,6 @@ class UpcomingBirthdaysFragment : Fragment() {
             }
         }
     }
-
-    /**
-     * Kategorisasi birthdays ke Today, This Week, This Month
-     */
     private fun categorizeBirthdays(allBirthdays: List<BirthdayItem>) {
         val today = Calendar.getInstance()
         val todayDay = today.get(Calendar.DAY_OF_MONTH)
@@ -149,10 +136,6 @@ class UpcomingBirthdaysFragment : Fragment() {
 
         updateUI(todayList, weekList, monthList)
     }
-
-    /**
-     * Update UI dengan data yang sudah dikategorisasi
-     */
     private fun updateUI(
         todayList: List<BirthdayItem>,
         weekList: List<BirthdayItem>,
@@ -191,18 +174,12 @@ class UpcomingBirthdaysFragment : Fragment() {
             rvThisMonth.adapter = UpcomingAdapter(monthList)
         }
     }
-
-    /**
-     * Load banner komunitas dari Firebase Database
-     * Menggunakan ImageKit untuk optimasi gambar
-     */
     private fun loadCommunityBanner() {
         database.child("community_info").child("bannerUrl").get()
             .addOnSuccessListener { snapshot ->
                 val bannerUrl = snapshot.getValue(String::class.java)
 
                 if (!bannerUrl.isNullOrEmpty()) {
-                    // Optimasi gambar menggunakan ImageKit
                     val optimizedUrl = ImageKitConfig.getTransformedUrl(
                         imageUrl = bannerUrl,
                         width = 800,
@@ -216,19 +193,14 @@ class UpcomingBirthdaysFragment : Fragment() {
                         .error(R.drawable.banner_placeholder)
                         .into(imgBanner)
                 } else {
-                    // Fallback ke local banner jika URL kosong
                     loadLocalBanner()
                 }
             }
             .addOnFailureListener {
-                // Fallback ke local banner jika gagal mengambil dari Firebase
                 loadLocalBanner()
             }
     }
 
-    /**
-     * Fallback: Load banner dari SharedPreferences (local URI)
-     */
     private fun loadLocalBanner() {
         val prefs = requireContext().getSharedPreferences("community_prefs", Activity.MODE_PRIVATE)
         val localUri = prefs.getString("localBannerUri", null)
@@ -253,11 +225,6 @@ class UpcomingBirthdaysFragment : Fragment() {
         _binding = null
     }
 }
-
-/**
- * ✅ Simple adapter untuk upcoming birthdays
- * Hanya menampilkan name dan date
- */
 class UpcomingAdapter(private val items: List<BirthdayItem>) :
     RecyclerView.Adapter<UpcomingAdapter.ViewHolder>() {
 

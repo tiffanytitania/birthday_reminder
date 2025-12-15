@@ -46,7 +46,6 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        // HomeFragment: adapter tanpa callbacks, isAdmin=false (buttons akan hidden)
         birthdayAdapter = BirthdayListAdapter(
             items = mutableListOf(),
             isAdmin = false,

@@ -8,5 +8,5 @@ interface QuoteApiService {
     suspend fun getQuotes(): List<Quote>
 
     @GET("api/random")
-    suspend fun getRandomQuote(): List<Quote>  // meskipun acak, formatnya array juga
+    suspend fun getRandomQuote(): List<Quote>
 }

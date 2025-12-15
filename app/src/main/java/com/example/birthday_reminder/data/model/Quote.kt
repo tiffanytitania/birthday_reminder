@@ -8,5 +8,5 @@ data class Quote(
     @Json(name = "a")
     val author: String?,
     @Json(name = "i")
-    val image: String?  // kadang tersedia
+    val image: String?
 )

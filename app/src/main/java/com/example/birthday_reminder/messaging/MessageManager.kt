@@ -6,10 +6,6 @@ import com.example.birthday_reminder.data.model.MessageType
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
-/**
- * MessageManager - Singleton untuk handle messaging
- * Menyimpan messages di SharedPreferences (untuk production gunakan Firebase)
- */
 object MessageManager {
     private const val PREF_NAME = "messages_prefs"
     private const val KEY_MESSAGES = "all_messages"

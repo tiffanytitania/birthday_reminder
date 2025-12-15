@@ -58,7 +58,7 @@ class AddBirthdayFragment : Fragment() {
             onEditClick = { birthdayItem ->
                 showEditBirthdayDialog(birthdayItem)
             },
-            layoutResId = R.layout.item_birthday  // ✅ TAMBAHKAN
+            layoutResId = R.layout.item_birthday
         )
 
         binding.recyclerView.apply {
@@ -94,7 +94,6 @@ class AddBirthdayFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        // ✅ FIXED: Simplify observers - jangan gunakan repeatOnLifecycle untuk setiap flow
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.filteredBirthdays.collect { birthdays ->
                 adapter.updateItems(birthdays)
