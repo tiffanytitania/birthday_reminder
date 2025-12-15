@@ -140,7 +140,7 @@ class UserManagementFragment : Fragment() {
 
     private fun updateUserRole(user: Member, newRole: String) {
         val database = FirebaseDatabase.getInstance(
-            "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
         database.child("birthdays").child(user.id).child("role").setValue(newRole)
@@ -170,7 +170,7 @@ class UserManagementFragment : Fragment() {
 
     private fun deleteUser(user: Member) {
         val database = FirebaseDatabase.getInstance(
-            "https://birthday-reminder-f26d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            "https://birthday-reminder-fa6fb-default-rtdb.asia-southeast1.firebasedatabase.app/"
         ).reference
 
         database.child("birthdays").child(user.id).removeValue()
